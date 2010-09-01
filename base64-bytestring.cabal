@@ -1,0 +1,27 @@
+name:                base64-bytestring
+version:             0.1.0.0
+synopsis:            Fast base64 encoding and deconding for ByteStrings
+description:         Fast base64 encoding and deconding for ByteStrings
+homepage:            http://bitbucket.org/bos/base64-bytestring
+license:             MIT
+license-file:        LICENSE
+author:              Bryan O'Sullivan <bos@serpentine.com>
+maintainer:          Bryan O'Sullivan <bos@serpentine.com>
+copyright:           2010 Bryan O'Sullivan
+category:            Data
+build-type:          Simple
+
+-- Extra files to be distributed with the package, such as examples or
+-- a README.
+-- Extra-source-files:  
+
+Cabal-version:       >=1.2
+
+
+library
+  exposed-modules:
+    Data.ByteString.Base64
+  
+  build-depends:
+    base == 4.*,
+    bytestring == 0.9.*
