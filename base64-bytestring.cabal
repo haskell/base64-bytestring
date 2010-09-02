@@ -28,3 +28,7 @@ library
 
   ghc-options: -Wall -funbox-strict-fields
   ghc-prof-options: -auto-all
+
+source-repository head
+  type:     mercurial
+  location: http://bitbucket.org/bos/base64-bytestring
