@@ -146,8 +146,9 @@ decode (PS sfp soff slen)
             let w = (a `shiftL` 18) .|. (b `shiftL` 12) .|.
                     (c `shiftL` 6) .|. d
             if a == done || b == done
-              then bail "invalid padding"
-              else if (a .|. b .|. c .|. d) == x
+              then bail $ "invalid padding near offset " ++
+                   show (sp `minusPtr` sptr)
+              else if a .|. b .|. c .|. d == x
               then bail $ "invalid base64 encoding near offset " ++
                    show (sp `minusPtr` sptr)
               else do
