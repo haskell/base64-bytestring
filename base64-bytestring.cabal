@@ -11,12 +11,10 @@ copyright:           2010 Bryan O'Sullivan
 category:            Data
 build-type:          Simple
 
--- Extra files to be distributed with the package, such as examples or
--- a README.
--- Extra-source-files:  
+extra-source-files:
+  tests/Transcode.hs
 
-Cabal-version:       >=1.2
-
+Cabal-version:       >=1.6
 
 library
   exposed-modules:
