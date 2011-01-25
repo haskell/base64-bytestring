@@ -42,7 +42,10 @@ peek8_32 = fmap fromIntegral . peek8
 -- | Encode a string into base64 form.  The result will always be a
 -- multiple of 4 bytes in length.
 encode :: ByteString -> ByteString
-encode (PS sfp soff slen) = unsafePerformIO $ do
+encode (PS sfp soff slen)
+    | slen > maxBound `div` 4 =
+        error "Data.ByteString.Base64.encode: input too long"
+    | otherwise = unsafePerformIO $ do
   let dlen = ((slen + 2) `div` 3) * 4
   dfp <- mallocByteString dlen
   withForeignPtr alfaFP $ \aptr ->
