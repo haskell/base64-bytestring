@@ -32,3 +32,7 @@ library
 source-repository head
   type:     mercurial
   location: http://bitbucket.org/bos/base64-bytestring
+
+source-repository head
+  type:     git
+  location: http://github.com/bos/base64-bytestring
