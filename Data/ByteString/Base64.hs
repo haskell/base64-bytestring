@@ -227,6 +227,10 @@ alfaFP :: ForeignPtr Word8
 alphabet@(PS alfaFP _ _) = B.pack $ [65..90] ++ [97..122] ++ [48..57] ++ [43,47]
 {-# NOINLINE alphabet #-}
 
+-- The encoding table is constructed such that the expansion of a 12bit block
+-- to a 16bit block can be done by a single Word16 copy from the correspoding
+-- table entry to the target address. The 16bit blocks are stored in big-endian
+-- order, as the indices into the table are built in big-endian order.
 encodeTable :: ForeignPtr Word16
 encodeTable = 
     case table of PS fp _ _ -> castForeignPtr fp
