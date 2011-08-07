@@ -18,15 +18,15 @@ This library is written in pure Haskell, and it's fast:
 # Get involved!
 
 Please report bugs via the
-[bitbucket issue tracker](http://bitbucket.org/bos/base64-bytestring).
+[github issue tracker](https://github.com/bos/base64-bytestring).
 
-Master [Mercurial repository](http://bitbucket.org/bos/base64-bytestring):
-
-* `hg clone http://bitbucket.org/bos/base64-bytestring`
-
-There's also a [git mirror](http://github.com/bos/base64-bytestring):
+Master [git repository](https://github.com/bos/base64-bytestring):
 
 * `git clone git://github.com/bos/base64-bytestring.git`
+
+And a [Mercurial mirror](https://bitbucket.org/bos/base64-bytestring):
+
+* `hg clone https://bitbucket.org/bos/base64-bytestring`
 
 (You can create and contribute changes using either Mercurial or git.)
 
