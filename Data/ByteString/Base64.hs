@@ -23,11 +23,10 @@ import Data.Bits ((.|.), (.&.), shiftL, shiftR)
 import qualified Data.ByteString as B
 import Data.ByteString.Internal (ByteString(..), mallocByteString, memcpy,
                                  unsafeCreate)
-import Data.ByteString.Unsafe (unsafeIndex)
 import Data.Word (Word8, Word16, Word32)
-import Foreign.ForeignPtr (ForeignPtr, mallocForeignPtrArray, withForeignPtr)
+import Foreign.ForeignPtr (ForeignPtr, withForeignPtr, castForeignPtr)
 import Foreign.Ptr (Ptr, castPtr, minusPtr, plusPtr)
-import Foreign.Storable (peek, peekElemOff, poke, pokeElemOff)
+import Foreign.Storable (peek, peekElemOff, poke)
 import System.IO.Unsafe (unsafePerformIO)
 
 peek8 :: Ptr Word8 -> IO Word8
@@ -228,14 +227,16 @@ alfaFP :: ForeignPtr Word8
 alphabet@(PS alfaFP _ _) = B.pack $ [65..90] ++ [97..122] ++ [48..57] ++ [43,47]
 {-# NOINLINE alphabet #-}
 
+-- The encoding table is constructed such that the expansion of a 12bit block
+-- to a 16bit block can be done by a single Word16 copy from the correspoding
+-- table entry to the target address. The 16bit blocks are stored in big-endian
+-- order, as the indices into the table are built in big-endian order.
 encodeTable :: ForeignPtr Word16
-encodeTable = unsafePerformIO $ do
-  fp <- mallocForeignPtrArray 4096
-  let ix = fromIntegral . unsafeIndex alphabet
-  withForeignPtr fp $ \p ->
-    sequence_ [ pokeElemOff p (j*64+k) ((ix k `shiftL` 8) .|. ix j)
-                | j <- [0..64], k <- [0..64] ]
-  return fp
+encodeTable = 
+    case table of PS fp _ _ -> castForeignPtr fp
+  where
+    ix    = fromIntegral . B.index alphabet
+    table = B.pack $ concat $ [ [ix j, ix k] | j <- [0..63], k <- [0..63] ]
 {-# NOINLINE encodeTable #-}
 
 decodeFP :: ForeignPtr Word8
