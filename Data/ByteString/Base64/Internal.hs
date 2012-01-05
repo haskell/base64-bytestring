@@ -30,7 +30,6 @@ import Foreign.ForeignPtr (ForeignPtr, withForeignPtr, castForeignPtr)
 import Foreign.Ptr (Ptr, castPtr, minusPtr, plusPtr)
 import Foreign.Storable (peek, peekElemOff, poke)
 import System.IO.Unsafe (unsafePerformIO)
-import Debug.Trace
 
 peek8 :: Ptr Word8 -> IO Word8
 peek8 = peek
@@ -45,7 +44,7 @@ peek8_32 = fmap fromIntegral . peek8
 -- multiple of 4 bytes in length. This function takes the encoding
 -- alphabet (for @base64@ or @base64url@) as the first paramert.
 encodeWithAlphabet :: ByteString -> ByteString -> ByteString
-encodeWithAlphabet alphabet (PS sfp soff slen)
+encodeWithAlphabet alphabet@(PS alfaFP _ _) (PS sfp soff slen)
     | slen > maxBound `div` 4 =
         error "Data.ByteString.Base64.encode: input too long"
     | otherwise = unsafePerformIO $ do
@@ -154,7 +153,6 @@ decodeWithTable decodeFP (PS sfp soff slen)
           look p = do
             ix <- fromIntegral `fmap` peek8 p
             v <- peek8 (decptr `plusPtr` ix)
-            trace ("v= " ++ show v ++ "\tix = " ++ show ix) (return ())
             return $! fromIntegral v :: IO Word32
           fill !dp !sp !n
             | sp >= sEnd = finish n
@@ -241,17 +239,6 @@ decodeLenientWithTable decodeFP (PS sfp soff slen)
             then PS dfp 0 dbytes
             else B.empty
   where dlen = ((slen + 3) `div` 4) * 3
-
-alphabet :: ByteString
-alfaFP :: ForeignPtr Word8
-alphabet@(PS alfaFP _ _) = B.pack $ [65..90] ++ [97..122] ++ [48..57] ++ [43,47]
-{-# NOINLINE alphabet #-}
-
-
-decodeFP :: ForeignPtr Word8
-PS decodeFP _ _ = B.pack $ replicate 43 x ++ [62,x,x,x,63] ++ [52..61] ++ [x,x,
-  x,done,x,x,x] ++ [0..25] ++ [x,x,x,x,x,x] ++ [26..51] ++ replicate 133 x
-{-# NOINLINE decodeFP #-}
 
 x :: Integral a => a
 x = 255
