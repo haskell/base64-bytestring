@@ -1,17 +1,17 @@
 {-# LANGUAGE BangPatterns #-}
 
 -- |
--- Module      : Data.ByteString.Base64
--- Copyright   : (c) 2010 Bryan O'Sullivan
+-- Module      : Data.ByteString.Base64.URL
+-- Copyright   : (c) 2012 Deian Stefan
 --
 -- License     : BSD-style
--- Maintainer  : bos@serpentine.com
+-- Maintainer  : deian@cs.stanford.edu
 -- Stability   : experimental
 -- Portability : GHC
 --
--- Fast and efficient encoding and decoding of base64-encoded strings.
+-- Fast and efficient encoding and decoding of base64url-encoded strings.
 
-module Data.ByteString.Base64
+module Data.ByteString.Base64.URL
     (
       encode
     , decode
@@ -26,18 +26,18 @@ import Data.Word (Word8, Word16, Word32)
 import Foreign.ForeignPtr (ForeignPtr)
 import Foreign.Ptr (Ptr)
 
--- | Encode a string into base64 form.  The result will always be a
+-- | Encode a string into base64url form.  The result will always be a
 -- multiple of 4 bytes in length.
 encode :: ByteString -> ByteString
 encode = encodeWithAlphabet alphabet
 
--- | Decode a base64-encoded string.  This function strictly follows
+-- | Decode a base64url-encoded string.  This function strictly follows
 -- the specification in RFC 4648,
 -- <http://www.apps.ietf.org/rfc/rfc4648.html>.
 decode :: ByteString -> Either String ByteString
 decode = decodeWithTable decodeFP
 
--- | Decode a base64-encoded string.  This function is lenient in
+-- | Decode a base64url-encoded string.  This function is lenient in
 -- following the specification from RFC 4648,
 -- <http://www.apps.ietf.org/rfc/rfc4648.html>, and will not generate
 -- parse errors no matter how poor its input.
@@ -47,12 +47,12 @@ decodeLenient = decodeLenientWithTable decodeFP
 
 alphabet :: ByteString
 alfaFP :: ForeignPtr Word8
-alphabet@(PS alfaFP _ _) = B.pack $ [65..90] ++ [97..122] ++ [48..57] ++ [43,47]
+alphabet@(PS alfaFP _ _) = B.pack $ [65..90] ++ [97..122] ++ [48..57] ++ [45,95]
 {-# NOINLINE alphabet #-}
 
 decodeFP :: ForeignPtr Word8
-PS decodeFP _ _ = B.pack $ replicate 43 x ++ [62,x,x,x,63] ++ [52..61] ++ [x,x,
-  x,done,x,x,x] ++ [0..25] ++ [x,x,x,x,x,x] ++ [26..51] ++ replicate 133 x
+PS decodeFP _ _ = B.pack $ replicate 45 x ++ [62,x,x] ++ [52..61] ++ [x,x,
+  x,done,x,x,x] ++ [0..25] ++ [x,x,x,x,63,x] ++ [26..51] ++ replicate 133 x
 {-# NOINLINE decodeFP #-}
 
 x :: Integral a => a
