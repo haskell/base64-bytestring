@@ -22,9 +22,8 @@ module Data.ByteString.Base64.URL
 import Data.ByteString.Base64.Internal
 import qualified Data.ByteString as B
 import Data.ByteString.Internal (ByteString(..))
-import Data.Word (Word8, Word16, Word32)
+import Data.Word (Word8)
 import Foreign.ForeignPtr (ForeignPtr)
-import Foreign.Ptr (Ptr)
 
 -- | Encode a string into base64url form.  The result will always be a
 -- multiple of 4 bytes in length.
@@ -46,8 +45,7 @@ decodeLenient = decodeLenientWithTable decodeFP
 
 
 alphabet :: ByteString
-alfaFP :: ForeignPtr Word8
-alphabet@(PS alfaFP _ _) = B.pack $ [65..90] ++ [97..122] ++ [48..57] ++ [45,95]
+alphabet = B.pack $ [65..90] ++ [97..122] ++ [48..57] ++ [45,95]
 {-# NOINLINE alphabet #-}
 
 decodeFP :: ForeignPtr Word8
