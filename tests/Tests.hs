@@ -54,6 +54,7 @@ genericDecodeEncode enc dec x = case dec (enc x) of
   
 --
 -- Unit tests from base64-string
+-- Copyright (c) Ian Lynagh, 2005, 2007.
 --
 
 base64_string_tests :: [Test]
