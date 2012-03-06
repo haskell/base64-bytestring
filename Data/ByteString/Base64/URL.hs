@@ -28,7 +28,7 @@ import Foreign.ForeignPtr (ForeignPtr)
 -- | Encode a string into base64url form.  The result will always be a
 -- multiple of 4 bytes in length.
 encode :: ByteString -> ByteString
-encode = encodeWithAlphabet alphabet
+encode = encodeWith (mkEncodeTable alphabet)
 
 -- | Decode a base64url-encoded string.  This function strictly follows
 -- the specification in RFC 4648,

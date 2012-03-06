@@ -13,9 +13,10 @@
 
 module Data.ByteString.Base64.Internal
     (
-      encodeWithAlphabet
+      encodeWith
     , decodeWithTable
     , decodeLenientWithTable
+    , mkEncodeTable
     , joinWith
     , done
     , peek8, poke8, peek8_32
@@ -40,11 +41,10 @@ poke8 = poke
 peek8_32 :: Ptr Word8 -> IO Word32
 peek8_32 = fmap fromIntegral . peek8
 
--- | Encode a string into base64 form.  The result will always be a
--- multiple of 4 bytes in length. This function takes the encoding
--- alphabet (for @base64@ or @base64url@) as the first paramert.
-encodeWithAlphabet :: ByteString -> ByteString -> ByteString
-encodeWithAlphabet alphabet@(PS alfaFP _ _) (PS sfp soff slen)
+-- | Encode a string into base64 form.  The result will always be a multiple
+-- of 4 bytes in length.
+encodeWith :: EncodeTable -> ByteString -> ByteString
+encodeWith (ET alfaFP encodeTable) (PS sfp soff slen)
     | slen > maxBound `div` 4 =
         error "Data.ByteString.Base64.encode: input too long"
     | otherwise = unsafePerformIO $ do
@@ -88,17 +88,20 @@ encodeWithAlphabet alphabet@(PS alfaFP _ _) (PS sfp soff slen)
         withForeignPtr dfp $ \dptr ->
           fill (castPtr dptr) (sptr `plusPtr` soff)
   return $! PS dfp 0 dlen
-  where -- The encoding table is constructed such that the expansion of a 12bit block
-        -- to a 16bit block can be done by a single Word16 copy from the correspoding
-        -- table entry to the target address. The 16bit blocks are stored in big-endian
-        -- order, as the indices into the table are built in big-endian order.
-        encodeTable :: ForeignPtr Word16
-        encodeTable = 
-            case table of PS fp _ _ -> castForeignPtr fp
-          where
-            ix    = fromIntegral . B.index alphabet
-            table = B.pack $ concat $ [ [ix j, ix k] | j <- [0..63], k <- [0..63] ]
-        {-# NOINLINE encodeTable #-}
+
+data EncodeTable = ET (ForeignPtr Word8) (ForeignPtr Word16)
+
+-- The encoding table is constructed such that the expansion of a 12-bit
+-- block to a 16-bit block can be done by a single Word16 copy from the
+-- correspoding table entry to the target address. The 16-bit blocks are
+-- stored in big-endian order, as the indices into the table are built in
+-- big-endian order.
+mkEncodeTable :: ByteString -> EncodeTable
+mkEncodeTable alphabet@(PS afp _ _) =
+    case table of PS fp _ _ -> ET afp (castForeignPtr fp)
+  where
+    ix    = fromIntegral . B.index alphabet
+    table = B.pack $ concat $ [ [ix j, ix k] | j <- [0..63], k <- [0..63] ]
 
 -- | Efficiently intersperse a terminator string into another at
 -- regular intervals, and terminate the input with it.
