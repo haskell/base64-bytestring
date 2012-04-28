@@ -1,5 +1,5 @@
 name:                base64-bytestring
-version:             0.1.1.1
+version:             0.1.1.2
 synopsis:            Fast base64 encoding and deconding for ByteStrings
 description:         Fast base64 encoding and deconding for ByteStrings
 homepage:            https://github.com/bos/base64-bytestring
