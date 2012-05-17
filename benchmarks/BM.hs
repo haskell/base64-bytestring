@@ -3,7 +3,7 @@
 import Criterion.Main
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Base64 as B
-import qualified Data.ByteString.Base64 as U
+import qualified Data.ByteString.Base64.URL as U
 
 sized name orig =
     bgroup name [
