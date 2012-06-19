@@ -111,6 +111,7 @@ mkEncodeTable alphabet@(PS afp _ _) =
 -- > joinWith "|" 2 "----" = "--|--|"
 --
 -- > joinWith "\r\n" 3 "foobarbaz" = "foo\r\nbar\r\nbaz\r\n"
+-- > joinWith "x" 3 "fo" = "fox"
 joinWith :: ByteString  -- ^ String to intersperse and end with
          -> Int         -- ^ Interval at which to intersperse, in bytes
          -> ByteString  -- ^ String to transform
@@ -124,21 +125,28 @@ joinWith brk@(PS bfp boff blen) every bs@(PS sfp soff slen)
     withForeignPtr bfp $ \bptr -> do
       withForeignPtr sfp $ \sptr -> do
           let bp = bptr `plusPtr` boff
-          let dEnd = dptr `plusPtr` dlen
-              loop !dp !sp | dp >= dEnd = return ()
-                           | otherwise = do
-                let n = min every (dEnd `minusPtr` dp)
-                memcpy dp sp (fromIntegral n)
-                memcpy (dp `plusPtr` n) bp (fromIntegral blen)
-                loop (dp `plusPtr` (n + blen)) (sp `plusPtr` every)
-          loop dptr (sptr `plusPtr` soff)
-  where dlen = slen + blen * numBreaks
+              sp0 = sptr `plusPtr` soff
+              sLast = sp0 `plusPtr` (every * numBreaks)
+              loop !dp !sp
+                  | sp == sLast = do
+                      let n = sp0 `plusPtr` slen `minusPtr` sp
+                      memcpy dp sp (fromIntegral n)
+                      memcpy (dp `plusPtr` n) bp (fromIntegral blen)
+                  | otherwise = do
+                memcpy dp sp (fromIntegral every)
+                let dp' = dp `plusPtr` every
+                memcpy dp' bp (fromIntegral blen)
+                loop (dp' `plusPtr` blen) (sp `plusPtr` every)
+          loop dptr sp0
+  where dlast = slen + blen * numBreaks
+        dlen | slen `mod` every > 0 = dlast + blen
+             | otherwise            = dlast
         numBreaks = slen `div` every
 
 -- | Decode a base64-encoded string.  This function strictly follows
 -- the specification in RFC 4648,
 -- <http://www.apps.ietf.org/rfc/rfc4648.html>.
--- This function takes the decoding table (for @base64@ or @base64url@) as 
+-- This function takes the decoding table (for @base64@ or @base64url@) as
 -- the first paramert.
 decodeWithTable :: ForeignPtr Word8 -> ByteString -> Either String ByteString
 decodeWithTable decodeFP (PS sfp soff slen)
@@ -195,7 +203,7 @@ data D = D { dNext :: {-# UNPACK #-} !(Ptr Word8)
 -- following the specification from RFC 4648,
 -- <http://www.apps.ietf.org/rfc/rfc4648.html>, and will not generate
 -- parse errors no matter how poor its input.
--- This function takes the decoding table (for @base64@ or @base64url@) as 
+-- This function takes the decoding table (for @base64@ or @base64url@) as
 -- the first paramert.
 decodeLenientWithTable :: ForeignPtr Word8 -> ByteString -> ByteString
 decodeLenientWithTable decodeFP (PS sfp soff slen)
