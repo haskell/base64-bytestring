@@ -42,27 +42,23 @@ tests = [
   , testsURL     $ Impl "LBase64URL" LBase64URL.encode LBase64URL.decode LBase64URL.decodeLenient
   ]
 
-testsRegular :: (IsString bs, Show bs, Eq bs, Arbitrary bs)
-             => Impl bs -> Test
-testsRegular impl@(Impl name encode decode decodeLenient)
-    = testGroup name [
-          testProperty "decodeEncode" $
-            genericDecodeEncode encode decode
-        , testProperty "decodeEncode Lenient" $
-            genericDecodeEncode encode (liftM Right decodeLenient)
-        , testGroup "base64-string tests" (base64_string_tests impl)
-      ]
+testsRegular :: (IsString bs, Show bs, Eq bs, Arbitrary bs) => Impl bs -> Test
+testsRegular = testsWith base64_testData
 
-testsURL :: (IsString bs, Show bs, Eq bs, Arbitrary bs)
-         => Impl bs -> Test
-testsURL impl@(Impl name encode decode decodeLenient)
+testsURL :: (IsString bs, Show bs, Eq bs, Arbitrary bs) => Impl bs -> Test
+testsURL = testsWith base64url_testData
+
+testsWith :: (IsString bs, Show bs, Eq bs, Arbitrary bs)
+          => [(bs, bs)] -> Impl bs -> Test
+testsWith testData
+          impl@(Impl name encode decode decodeLenient)
     = testGroup name [
         testProperty "decodeEncode" $
           genericDecodeEncode encode decode
       , testProperty "decodeEncode Lenient" $
           genericDecodeEncode encode
                               (liftM Right decodeLenient)
-      , testGroup "base64-string tests" (base64url_string_tests impl)
+      , testGroup "base64-string tests" (string_tests testData impl)
     ]
 
 instance Arbitrary ByteString where
@@ -102,50 +98,43 @@ genericDecodeEncode enc dec x = case dec (enc x) of
 -- Copyright (c) Ian Lynagh, 2005, 2007.
 --
 
-base64_string_tests :: forall bs
-                    . (IsString bs, Show bs, Eq bs) => Impl bs -> [Test]
-base64_string_tests (Impl _ encode decode decodeLenient) =
+string_tests :: forall bs
+             . (IsString bs, Show bs, Eq bs) => [(bs, bs)] -> Impl bs -> [Test]
+string_tests testData (Impl _ encode decode decodeLenient) =
   base64_string_test encode decode         testData ++
   base64_string_test encode decodeLenient' testData
   where decodeLenient' :: bs -> Either String bs
         decodeLenient' = liftM Right decodeLenient
-        testData :: [(bs, bs)]
-        testData = [("",                "")
-                   ,("\0",              "AA==")
-                   ,("\255",            "/w==")
-                   ,("E",               "RQ==")
-                   ,("Ex",              "RXg=")
-                   ,("Exa",             "RXhh")
-                   ,("Exam",            "RXhhbQ==")
-                   ,("Examp",           "RXhhbXA=")
-                   ,("Exampl",          "RXhhbXBs")
-                   ,("Example",         "RXhhbXBsZQ==")
-                   ,("Ex\0am\254ple",   "RXgAYW3+cGxl")
-                   ,("Ex\0am\255ple",   "RXgAYW3/cGxl")
-                   ]
 
--- | Same as the base64_string_tests but using the alternative alphabet
-base64url_string_tests :: forall bs
-                       . (IsString bs, Show bs, Eq bs) => Impl bs -> [Test]
-base64url_string_tests (Impl _ encode decode decodeLenient) =
-  base64_string_test encode decode         testData ++
-  base64_string_test encode decodeLenient' testData
-  where decodeLenient' :: bs -> Either String bs
-        decodeLenient' = liftM Right decodeLenient
-        testData :: [(bs, bs)]
-        testData = [("",                "")
-                   ,("\0",              "AA==")
-                   ,("\255",            "_w==")
-                   ,("E",               "RQ==")
-                   ,("Ex",              "RXg=")
-                   ,("Exa",             "RXhh")
-                   ,("Exam",            "RXhhbQ==")
-                   ,("Examp",           "RXhhbXA=")
-                   ,("Exampl",          "RXhhbXBs")
-                   ,("Example",         "RXhhbXBsZQ==")
-                   ,("Ex\0am\254ple",   "RXgAYW3-cGxl")
-                   ,("Ex\0am\255ple",   "RXgAYW3_cGxl")
-                   ]
+base64_testData :: IsString bs => [(bs, bs)]
+base64_testData = [("",                "")
+                  ,("\0",              "AA==")
+                  ,("\255",            "/w==")
+                  ,("E",               "RQ==")
+                  ,("Ex",              "RXg=")
+                  ,("Exa",             "RXhh")
+                  ,("Exam",            "RXhhbQ==")
+                  ,("Examp",           "RXhhbXA=")
+                  ,("Exampl",          "RXhhbXBs")
+                  ,("Example",         "RXhhbXBsZQ==")
+                  ,("Ex\0am\254ple",   "RXgAYW3+cGxl")
+                  ,("Ex\0am\255ple",   "RXgAYW3/cGxl")
+                  ]
+
+base64url_testData :: IsString bs => [(bs, bs)]
+base64url_testData = [("",                "")
+                     ,("\0",              "AA==")
+                     ,("\255",            "_w==")
+                     ,("E",               "RQ==")
+                     ,("Ex",              "RXg=")
+                     ,("Exa",             "RXhh")
+                     ,("Exam",            "RXhhbQ==")
+                     ,("Examp",           "RXhhbXA=")
+                     ,("Exampl",          "RXhhbXBs")
+                     ,("Example",         "RXhhbXBsZQ==")
+                     ,("Ex\0am\254ple",   "RXgAYW3-cGxl")
+                     ,("Ex\0am\255ple",   "RXgAYW3_cGxl")
+                     ]
 
 -- | Generic test given encod enad decode funstions and a
 -- list of (plain, encoded) pairs
