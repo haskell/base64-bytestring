@@ -42,13 +42,13 @@ tests = [
   , testsURL     $ Impl "LBase64URL" LBase64URL.encode LBase64URL.decode LBase64URL.decodeLenient
   ]
 
-testsRegular :: (IsString bs, Show bs, Eq bs, Arbitrary bs) => Impl bs -> Test
+testsRegular :: (IsString bs, AllRepresentations bs, Show bs, Eq bs, Arbitrary bs) => Impl bs -> Test
 testsRegular = testsWith base64_testData
 
-testsURL :: (IsString bs, Show bs, Eq bs, Arbitrary bs) => Impl bs -> Test
+testsURL :: (IsString bs, AllRepresentations bs, Show bs, Eq bs, Arbitrary bs) => Impl bs -> Test
 testsURL = testsWith base64url_testData
 
-testsWith :: (IsString bs, Show bs, Eq bs, Arbitrary bs)
+testsWith :: (IsString bs, AllRepresentations bs, Show bs, Eq bs, Arbitrary bs)
           => [(bs, bs)] -> Impl bs -> Test
 testsWith testData
           impl@(Impl name encode decode decodeLenient)
@@ -99,7 +99,8 @@ genericDecodeEncode enc dec x = case dec (enc x) of
 --
 
 string_tests :: forall bs
-             . (IsString bs, Show bs, Eq bs) => [(bs, bs)] -> Impl bs -> [Test]
+              . (IsString bs, AllRepresentations bs, Show bs, Eq bs)
+             => [(bs, bs)] -> Impl bs -> [Test]
 string_tests testData (Impl _ encode decode decodeLenient) =
   base64_string_test encode decode         testData ++
   base64_string_test encode decodeLenient' testData
@@ -138,16 +139,46 @@ base64url_testData = [("",                "")
 
 -- | Generic test given encod enad decode funstions and a
 -- list of (plain, encoded) pairs
-base64_string_test :: (Eq bs, Show bs)
+base64_string_test :: (AllRepresentations bs, Eq bs, Show bs)
                    => (bs -> bs)
                    -> (bs -> Either String bs)
                    -> [(bs, bs)] -> [Test]
-base64_string_test enc dec testData = concat
-      [ [ testCase ("base64-string: Encode " ++ show plain)
-                   (encoded_plain @?= encoded),
-          testCase ("base64-string: Decode " ++ show plain)
-                   (decoded_encoded @?= Right plain) ]
-      | (plain, encoded) <- testData,
+base64_string_test enc dec testData =
+      [ testCase ("base64-string: Encode " ++ show plain)
+                 (encoded_plain @?= rawEncoded)
+      | (rawPlain, rawEncoded) <- testData,
+        -- For lazy ByteStrings, we want to check not only ["foo"], but
+        -- also ["f","oo"], ["f", "o", "o"] and ["fo", "o"]. The
+        -- allRepresentations function gives us all representations of a
+        -- lazy ByteString.
+        plain   <- allRepresentations rawPlain,
         let encoded_plain = enc plain
-            decoded_encoded = dec encoded
+      ] ++
+      [ testCase ("base64-string: Decode " ++ show encoded)
+                 (decoded_encoded @?= Right rawPlain)
+      | (rawPlain, rawEncoded) <- testData,
+        -- Again, we need to try all representations of lazy ByteStrings.
+        encoded <- allRepresentations rawEncoded,
+        let decoded_encoded = dec encoded
       ]
+
+class AllRepresentations a where
+    allRepresentations :: a -> [a]
+
+instance AllRepresentations ByteString where
+    allRepresentations bs = [bs]
+
+instance AllRepresentations L.ByteString where
+    -- TODO: Use L.toStrict instead of (B.concat . L.toChunks) once
+    -- we can rely on a new enough bytestring
+    allRepresentations = map L.fromChunks . allChunks . B.concat . L.toChunks
+        where allChunks b
+               | B.length b < 2 = [[b]]
+               | otherwise
+                  = concat [ map (prefix :) (allChunks suffix)
+                           | let splits = zip (B.inits b) (B.tails b)
+                             -- We don't want the first split (empty prefix)
+                             -- The last split (empty suffix) gives us the
+                             -- [b] case (toChunks ignores an "" element).
+                           , (prefix, suffix) <- tail splits ]
+
