@@ -1,11 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+import Control.DeepSeq (NFData(rnf))
 import Criterion.Main
-import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Base64 as B
+import qualified Data.ByteString.Base64.Lazy as L
 import qualified Data.ByteString.Base64.URL as U
+import qualified Data.ByteString.Char8 as B
+import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString.Lazy.Internal as L
 
-sized name orig =
+strict name orig =
     bgroup name [
       bgroup "normal" [
         bench "decode" $ whnf B.decode enc
@@ -20,10 +24,30 @@ sized name orig =
     ]
   where enc = U.encode orig
 
+instance NFData L.ByteString where
+    rnf L.Empty        = ()
+    rnf (L.Chunk _ ps) = rnf ps
+
+lazy name orig =
+    bgroup name [
+      bench "decode" $ nf L.decode enc
+    , bench "encode" $ nf L.encode orig
+    ]
+  where enc = L.encode orig
+
 main :: IO ()
 main = defaultMain [
-         sized "small" input
-       , sized "medium" (B.concat (replicate 100 input))
-       , sized "large" (B.concat (replicate 10000 input))
+         bgroup "lazy" [
+           lazy "small" (L.fromChunks [input])
+         , lazy "medium" (L.concat . replicate 16 . L.fromChunks . (:[]) .
+                          B.concat $ replicate 8 input)
+         , lazy "large" (L.concat . replicate 1280 . L.fromChunks . (:[]) .
+                          B.concat $ replicate 8 input)
+         ]
+       , bgroup "strict" [
+           strict "small" input
+         , strict "medium" (B.concat (replicate 128 input))
+         , strict "large" (B.concat (replicate 10240 input))
+         ]
        ]
   where input = "abcdABCD0123[];'"
