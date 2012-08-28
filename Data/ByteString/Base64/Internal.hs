@@ -155,12 +155,12 @@ decodeWithTable decodeFP (PS sfp soff slen)
     | dlen <= 0 = Right B.empty
     | otherwise = unsafePerformIO $ do
   dfp <- mallocByteString dlen
-  withForeignPtr decodeFP $ \decptr -> do
+  withForeignPtr decodeFP $ \ !decptr -> do
     let finish dbytes = return . Right $! if dbytes > 0
                                           then PS dfp 0 dbytes
                                           else B.empty
         bail = return . Left
-    withForeignPtr sfp $ \sptr -> do
+    withForeignPtr sfp $ \ !sptr -> do
       let sEnd = sptr `plusPtr` (slen + soff)
           look p = do
             ix <- fromIntegral `fmap` peek8 p
@@ -197,9 +197,6 @@ decodeWithTable decodeFP (PS sfp soff slen)
   where (di,drem) = slen `divMod` 4
         dlen = di * 3
 
-data D = D { dNext :: {-# UNPACK #-} !(Ptr Word8)
-           , dValue :: {-# UNPACK #-} !Word32 }
-
 -- | Decode a base64-encoded string.  This function is lenient in
 -- following the specification from RFC 4648,
 -- <http://www.apps.ietf.org/rfc/rfc4648.html>, and will not generate
@@ -211,45 +208,49 @@ decodeLenientWithTable decodeFP (PS sfp soff slen)
     | dlen <= 0 = B.empty
     | otherwise = unsafePerformIO $ do
   dfp <- mallocByteString dlen
-  dbytes <- withForeignPtr decodeFP $ \decptr ->
-    withForeignPtr sfp $ \sptr -> do
-      let sEnd = sptr `plusPtr` (slen + soff)
+  withForeignPtr decodeFP $ \ !decptr ->
+    withForeignPtr sfp $ \ !sptr -> do
+      let finish dbytes
+              | dbytes > 0 = return (PS dfp 0 dbytes)
+              | otherwise  = return B.empty
+          sEnd = sptr `plusPtr` (slen + soff)
           fill !dp !sp !n
-            | sp >= sEnd = return n
-            | otherwise = {-# SCC "decodeLenientWithTable/fill" #-} do
-            let look skipPad = go
+            | sp >= sEnd = finish n
+            | otherwise = {-# SCC "decodeLenientWithTable/fill" #-}
+            let look :: Bool -> Ptr Word8
+                     -> (Ptr Word8 -> Word32 -> IO ByteString)
+                     -> IO ByteString
+                {-# INLINE look #-}
+                look skipPad p0 f = go p0
                   where
-                    go p | p >= sEnd = return $! D (sEnd `plusPtr` (-1)) done
-                         | otherwise =  {-# SCC "decodeLenient/look" #-} do
+                    go p | p >= sEnd = f (sEnd `plusPtr` (-1)) done
+                         | otherwise = {-# SCC "decodeLenient/look" #-} do
                       ix <- fromIntegral `fmap` peek8 p
                       v <- peek8 (decptr `plusPtr` ix)
                       if v == x || (v == done && skipPad)
                         then go (p `plusPtr` 1)
-                        else return $! D (p `plusPtr` 1) (fromIntegral v)
-            !a <- look True  sp
-            !b <- look True  (dNext a)
-            !c <- look False (dNext b)
-            !d <- look False (dNext c)
-            let w = (dValue a `shiftL` 18) .|. (dValue b `shiftL` 12) .|.
-                    (dValue c `shiftL` 6) .|. dValue d
-            if dValue a == done || dValue b == done
-              then return n
-              else do
-                poke8 dp $ fromIntegral (w `shiftR` 16)
-                if dValue c == done
-                  then return $! n + 1
-                  else do
-                    poke8 (dp `plusPtr` 1) $ fromIntegral (w `shiftR` 8)
-                    if dValue d == done
-                      then return $! n + 2
-                      else do
-                        poke8 (dp `plusPtr` 2) $ fromIntegral w
-                        fill (dp `plusPtr` 3) (dNext d) (n+3)
+                        else f (p `plusPtr` 1) (fromIntegral v)
+            in look True sp $ \ !aNext !aValue ->
+               look True aNext $ \ !bNext !bValue ->
+                 if aValue == done || bValue == done
+                 then finish n
+                 else
+                    look False bNext $ \ !cNext !cValue ->
+                    look False cNext $ \ !dNext !dValue -> do
+                      let w = (aValue `shiftL` 18) .|. (bValue `shiftL` 12) .|.
+                              (cValue `shiftL` 6) .|. dValue
+                      poke8 dp $ fromIntegral (w `shiftR` 16)
+                      if cValue == done
+                        then finish (n + 1)
+                        else do
+                          poke8 (dp `plusPtr` 1) $ fromIntegral (w `shiftR` 8)
+                          if dValue == done
+                            then finish (n + 2)
+                            else do
+                              poke8 (dp `plusPtr` 2) $ fromIntegral w
+                              fill (dp `plusPtr` 3) dNext (n+3)
       withForeignPtr dfp $ \dptr ->
         fill dptr (sptr `plusPtr` soff) 0
-  return $! if dbytes > 0
-            then PS dfp 0 dbytes
-            else B.empty
   where dlen = ((slen + 3) `div` 4) * 3
 
 x :: Integral a => a
@@ -282,4 +283,3 @@ reChunkIn n (y : ys) = case B.length y `divMod` n of
                                            in acc' : reChunkIn n zs'
                                       else -- suffix must be null
                                            fixup acc' zs
-
