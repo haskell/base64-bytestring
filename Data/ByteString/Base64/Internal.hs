@@ -74,16 +74,16 @@ encodeWith (ET alfaFP encodeTable) (PS sfp soff slen)
                   twoMore    = sp `plusPtr` 2 == sEnd
                   equals     = 0x3d :: Word8
                   {-# INLINE equals #-}
-              a <- peekSP 0 ((`shiftR` 2) . (.&. 0xfc))
-              b <- peekSP 0 ((`shiftL` 4) . (.&. 0x03))
+              !a <- peekSP 0 ((`shiftR` 2) . (.&. 0xfc))
+              !b <- peekSP 0 ((`shiftL` 4) . (.&. 0x03))
               !b' <- if twoMore
                      then peekSP 1 ((.|. b) . (`shiftR` 4) . (.&. 0xf0))
                      else return b
               poke8 dp =<< aidx a
               poke8 (dp `plusPtr` 1) =<< aidx b'
-              c <- if twoMore
-                   then aidx =<< peekSP 1 ((`shiftL` 2) . (.&. 0x0f))
-                   else return equals
+              !c <- if twoMore
+                    then aidx =<< peekSP 1 ((`shiftL` 2) . (.&. 0x0f))
+                    else return equals
               poke8 (dp `plusPtr` 2) c
               poke8 (dp `plusPtr` 3) equals
         withForeignPtr dfp $ \dptr ->
