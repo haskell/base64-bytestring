@@ -264,22 +264,22 @@ done = 99
 -- This takes a list of ByteStrings, and returns a list in which each
 -- (apart from possibly the last) has length that is a multiple of n
 reChunkIn :: Int -> [ByteString] -> [ByteString]
-reChunkIn _ [] = []
-reChunkIn _ [y] = [y]
-reChunkIn n (y : ys) = case B.length y `divMod` n of
-                       (_, 0) ->
-                           y : reChunkIn n ys
-                       (d, _) ->
-                           case B.splitAt (d * n) y of
-                           (prefix, suffix) -> prefix : fixup suffix ys
-    where fixup acc [] = [acc]
-          fixup acc (z : zs) = case B.splitAt (n - B.length acc) z of
-                               (prefix, suffix) ->
-                                   let acc' = acc `B.append` prefix
-                                   in if B.length acc' == n
-                                      then let zs' = if B.null suffix
-                                                     then          zs
-                                                     else suffix : zs
-                                           in acc' : reChunkIn n zs'
-                                      else -- suffix must be null
-                                           fixup acc' zs
+reChunkIn !n = go
+  where
+    go [] = []
+    go [y] = [y]
+    go (y : ys) = case B.length y `divMod` n of
+                    (_, 0) -> y : go ys
+                    (d, _) -> case B.splitAt (d * n) y of
+                                (prefix, suffix) -> prefix : fixup suffix ys
+    fixup acc [] = [acc]
+    fixup acc (z : zs) = case B.splitAt (n - B.length acc) z of
+                           (prefix, suffix) ->
+                             let acc' = acc `B.append` prefix
+                             in if B.length acc' == n
+                                then let zs' = if B.null suffix
+                                               then          zs
+                                               else suffix : zs
+                                     in acc' : go zs'
+                                else -- suffix must be null
+                                    fixup acc' zs
