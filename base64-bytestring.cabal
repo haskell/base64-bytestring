@@ -1,7 +1,7 @@
 name:                base64-bytestring
 version:             1.0.0.0
-synopsis:            Fast base64 encoding and deconding for ByteStrings
-description:         Fast base64 encoding and deconding for ByteStrings
+synopsis:            Fast base64 encoding and decoding for ByteStrings
+description:         Fast base64 encoding and decoding for ByteStrings
 homepage:            https://github.com/bos/base64-bytestring
 bug-reports:         https://github.com/bos/base64-bytestring/issues
 license:             BSD3
