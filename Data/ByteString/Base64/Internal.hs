@@ -267,7 +267,6 @@ reChunkIn :: Int -> [ByteString] -> [ByteString]
 reChunkIn !n = go
   where
     go [] = []
-    go [y] = [y]
     go (y : ys) = case B.length y `divMod` n of
                     (_, 0) -> y : go ys
                     (d, _) -> case B.splitAt (d * n) y of
