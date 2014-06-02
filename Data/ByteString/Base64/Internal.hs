@@ -14,7 +14,9 @@
 module Data.ByteString.Base64.Internal
     (
       encodeWith
+    , encodeWithInternal
     , decodeWithTable
+    , decodeWithTableInternal
     , decodeLenientWithTable
     , mkEncodeTable
     , joinWith
@@ -23,6 +25,7 @@ module Data.ByteString.Base64.Internal
     , reChunkIn
     ) where
 
+import Control.Monad (when)
 import Data.Bits ((.|.), (.&.), shiftL, shiftR)
 import qualified Data.ByteString as B
 import Data.ByteString.Internal (ByteString(..), mallocByteString, memcpy,
@@ -42,14 +45,19 @@ poke8 = poke
 peek8_32 :: Ptr Word8 -> IO Word32
 peek8_32 = fmap fromIntegral . peek8
 
+encodeWith :: EncodeTable -> ByteString -> ByteString
+encodeWith t b = encodeWithInternal True t b
+
 -- | Encode a string into base64 form.  The result will always be a multiple
 -- of 4 bytes in length.
-encodeWith :: EncodeTable -> ByteString -> ByteString
-encodeWith (ET alfaFP encodeTable) (PS sfp soff slen)
+encodeWithInternal :: Bool -> EncodeTable -> ByteString -> ByteString
+encodeWithInternal withPadding (ET alfaFP encodeTable) (PS sfp soff slen)
     | slen > maxBound `div` 4 =
         error "Data.ByteString.Base64.encode: input too long"
     | otherwise = unsafePerformIO $ do
-  let dlen = ((slen + 2) `div` 3) * 4
+  let dlen
+        | withPadding = ((slen + 2) `div` 3) * 4
+        | otherwise = (slen * 4 - 1) `div` 3 + 1
   dfp <- mallocByteString dlen
   withForeignPtr alfaFP $ \aptr ->
     withForeignPtr encodeTable $ \ep ->
@@ -84,8 +92,8 @@ encodeWith (ET alfaFP encodeTable) (PS sfp soff slen)
               !c <- if twoMore
                     then aidx =<< peekSP 1 ((`shiftL` 2) . (.&. 0x0f))
                     else return equals
-              poke8 (dp `plusPtr` 2) c
-              poke8 (dp `plusPtr` 3) equals
+              when (withPadding || c /= equals) $ poke8 (dp `plusPtr` 2) c
+              when withPadding $ poke8 (dp `plusPtr` 3) equals
         withForeignPtr dfp $ \dptr ->
           fill (castPtr dptr) (sptr `plusPtr` soff)
   return $! PS dfp 0 dlen
@@ -150,8 +158,11 @@ joinWith brk@(PS bfp boff blen) every bs@(PS sfp soff slen)
 -- This function takes the decoding table (for @base64@ or @base64url@) as
 -- the first paramert.
 decodeWithTable :: ForeignPtr Word8 -> ByteString -> Either String ByteString
-decodeWithTable decodeFP (PS sfp soff slen)
-    | drem /= 0 = Left "invalid padding"
+decodeWithTable t b = decodeWithTableInternal True t b
+
+decodeWithTableInternal :: Bool -> ForeignPtr Word8 -> ByteString -> Either String ByteString
+decodeWithTableInternal withPadding decodeFP (PS sfp soff slen)
+    | withPadding && drem /= 0 = Left "invalid padding"
     | dlen <= 0 = Right B.empty
     | otherwise = unsafePerformIO $ do
   dfp <- mallocByteString dlen
@@ -162,7 +173,9 @@ decodeWithTable decodeFP (PS sfp soff slen)
         bail = return . Left
     withForeignPtr sfp $ \ !sptr -> do
       let sEnd = sptr `plusPtr` (slen + soff)
-          look p = do
+          look p
+            | p >= sEnd = return done -- This can happen in case of @withPadding == False@
+            | otherwise = do
             ix <- fromIntegral `fmap` peek8 p
             v <- peek8 (decptr `plusPtr` ix)
             return $! fromIntegral v :: IO Word32
@@ -195,7 +208,9 @@ decodeWithTable decodeFP (PS sfp soff slen)
       withForeignPtr dfp $ \dptr ->
         fill dptr (sptr `plusPtr` soff) 0
   where (di,drem) = slen `divMod` 4
-        dlen = di * 3
+        dlen
+          | withPadding = di * 3
+          | otherwise = di * 3 + max drem 1 - 1
 
 -- | Decode a base64-encoded string.  This function is lenient in
 -- following the specification from RFC 4648,

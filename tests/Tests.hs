@@ -10,10 +10,14 @@ import Test.Framework.Providers.HUnit (testCase)
 import Test.QuickCheck (Arbitrary(..), Positive(..))
 
 import Control.Monad (liftM)
-import qualified Data.ByteString.Base64          as Base64
-import qualified Data.ByteString.Base64.Lazy     as LBase64
-import qualified Data.ByteString.Base64.URL      as Base64URL
-import qualified Data.ByteString.Base64.URL.Lazy as LBase64URL
+import qualified Data.ByteString.Base64                    as Base64
+import qualified Data.ByteString.Base64.NoPadding          as NBase64
+import qualified Data.ByteString.Base64.Lazy               as LBase64
+import qualified Data.ByteString.Base64.Lazy.NoPadding     as LNBase64
+import qualified Data.ByteString.Base64.URL                as Base64URL
+import qualified Data.ByteString.Base64.URL.NoPadding      as NBase64URL
+import qualified Data.ByteString.Base64.URL.Lazy           as LBase64URL
+import qualified Data.ByteString.Base64.URL.Lazy.NoPadding as LNBase64URL
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 ()
 import qualified Data.ByteString.Char8 as B
@@ -36,17 +40,27 @@ tests = [
         testProperty "all_endsWith" joinWith_all_endsWith
       , testProperty "endsWith" joinWith_endsWith
     ]
-  , testsRegular $ Impl "Base64"     Base64.encode     Base64.decode     Base64.decodeLenient
-  , testsRegular $ Impl "LBase64"    LBase64.encode    LBase64.decode    LBase64.decodeLenient
-  , testsURL     $ Impl "Base64URL"  Base64URL.encode  Base64URL.decode  Base64URL.decodeLenient
-  , testsURL     $ Impl "LBase64URL" LBase64URL.encode LBase64URL.decode LBase64URL.decodeLenient
+  , testsRegular      $ Impl "Base64"              Base64.encode      Base64.decode      Base64.decodeLenient
+  , testsRegularNoPad $ Impl "Base64NoPadding"     NBase64.encode     NBase64.decode     NBase64.decodeLenient
+  , testsRegular      $ Impl "LBase64"             LBase64.encode     LBase64.decode     LBase64.decodeLenient
+  , testsRegularNoPad $ Impl "LBase64NoPadding"    LNBase64.encode    LNBase64.decode    LNBase64.decodeLenient
+  , testsURL          $ Impl "Base64URL"           Base64URL.encode   Base64URL.decode   Base64URL.decodeLenient
+  , testsURLNoPad     $ Impl "Base64URLNoPadding"  NBase64URL.encode  NBase64URL.decode  NBase64URL.decodeLenient
+  , testsURL          $ Impl "LBase64URL"          LBase64URL.encode  LBase64URL.decode  LBase64URL.decodeLenient
+  , testsURLNoPad     $ Impl "LBase64URLNoPadding" LNBase64URL.encode LNBase64URL.decode LNBase64URL.decodeLenient
   ]
 
 testsRegular :: (IsString bs, AllRepresentations bs, Show bs, Eq bs, Arbitrary bs) => Impl bs -> Test
 testsRegular = testsWith base64_testData
 
+testsRegularNoPad :: (IsString bs, AllRepresentations bs, Show bs, Eq bs, Arbitrary bs) => Impl bs -> Test
+testsRegularNoPad = testsWith base64_testData_noPad
+
 testsURL :: (IsString bs, AllRepresentations bs, Show bs, Eq bs, Arbitrary bs) => Impl bs -> Test
 testsURL = testsWith base64url_testData
+
+testsURLNoPad :: (IsString bs, AllRepresentations bs, Show bs, Eq bs, Arbitrary bs) => Impl bs -> Test
+testsURLNoPad = testsWith base64url_testData_noPad
 
 testsWith :: (IsString bs, AllRepresentations bs, Show bs, Eq bs, Arbitrary bs)
           => [(bs, bs)] -> Impl bs -> Test
@@ -122,6 +136,21 @@ base64_testData = [("",                "")
                   ,("Ex\0am\255ple",   "RXgAYW3/cGxl")
                   ]
 
+base64_testData_noPad :: IsString bs => [(bs, bs)]
+base64_testData_noPad = [("",                "")
+                        ,("\0",              "AA")
+                        ,("\255",            "/w")
+                        ,("E",               "RQ")
+                        ,("Ex",              "RXg")
+                        ,("Exa",             "RXhh")
+                        ,("Exam",            "RXhhbQ")
+                        ,("Examp",           "RXhhbXA")
+                        ,("Exampl",          "RXhhbXBs")
+                        ,("Example",         "RXhhbXBsZQ")
+                        ,("Ex\0am\254ple",   "RXgAYW3+cGxl")
+                        ,("Ex\0am\255ple",   "RXgAYW3/cGxl")
+                        ]
+
 base64url_testData :: IsString bs => [(bs, bs)]
 base64url_testData = [("",                "")
                      ,("\0",              "AA==")
@@ -136,6 +165,21 @@ base64url_testData = [("",                "")
                      ,("Ex\0am\254ple",   "RXgAYW3-cGxl")
                      ,("Ex\0am\255ple",   "RXgAYW3_cGxl")
                      ]
+
+base64url_testData_noPad :: IsString bs => [(bs, bs)]
+base64url_testData_noPad = [("",                "")
+                           ,("\0",              "AA")
+                           ,("\255",            "_w")
+                           ,("E",               "RQ")
+                           ,("Ex",              "RXg")
+                           ,("Exa",             "RXhh")
+                           ,("Exam",            "RXhhbQ")
+                           ,("Examp",           "RXhhbXA")
+                           ,("Exampl",          "RXhhbXBs")
+                           ,("Example",         "RXhhbXBsZQ")
+                           ,("Ex\0am\254ple",   "RXgAYW3-cGxl")
+                           ,("Ex\0am\255ple",   "RXgAYW3_cGxl")
+                           ]
 
 -- | Generic test given encod enad decode funstions and a
 -- list of (plain, encoded) pairs
