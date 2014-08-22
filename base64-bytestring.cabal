@@ -1,5 +1,5 @@
 name:                base64-bytestring
-version:             1.0.0.1
+version:             1.0.0.2
 synopsis:            Fast base64 encoding and decoding for ByteStrings
 description:         Fast base64 encoding and decoding for ByteStrings
 homepage:            https://github.com/bos/base64-bytestring
@@ -30,7 +30,7 @@ library
     Data.ByteString.Base64.Internal
 
   build-depends:
-    base == 4.*,
+    base >= 4.0.0.0 && < 5,
     bytestring >= 0.9.0
 
   ghc-options: -Wall -funbox-strict-fields
