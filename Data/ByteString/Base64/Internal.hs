@@ -117,8 +117,8 @@ joinWith :: ByteString  -- ^ String to intersperse and end with
          -> Int         -- ^ Interval at which to intersperse, in bytes
          -> ByteString  -- ^ String to transform
          -> ByteString
-joinWith brk@(PS bfp boff blen) every bs@(PS sfp soff slen)
-    | every <= 0 = error "invalid interval"
+joinWith brk@(PS bfp boff blen) every' bs@(PS sfp soff slen)
+    | every' <= 0 = error "invalid interval"
     | blen <= 0  = bs
     | B.null bs = brk
     | otherwise =
@@ -127,22 +127,22 @@ joinWith brk@(PS bfp boff blen) every bs@(PS sfp soff slen)
       withForeignPtr sfp $ \sptr -> do
           let bp = bptr `plusPtr` boff
               sp0 = sptr `plusPtr` soff
-              sLast = sp0 `plusPtr` (every * numBreaks)
+              sEnd = sp0 `plusPtr` slen
+              dLast = dptr `plusPtr` dlen
               loop !dp !sp
-                  | sp == sLast = do
-                      let n = sp0 `plusPtr` slen `minusPtr` sp
-                      memcpy dp sp (fromIntegral n)
-                      memcpy (dp `plusPtr` n) bp (fromIntegral blen)
+                  | dp == dLast = return ()
                   | otherwise = do
-                memcpy dp sp (fromIntegral every)
-                let dp' = dp `plusPtr` every
+                let chunkSize = min every (sEnd `minusPtr` sp)
+                memcpy dp sp (fromIntegral chunkSize)
+                let dp' = dp `plusPtr` chunkSize
                 memcpy dp' bp (fromIntegral blen)
-                loop (dp' `plusPtr` blen) (sp `plusPtr` every)
+                loop (dp' `plusPtr` blen) (sp `plusPtr` chunkSize)
           loop dptr sp0
   where dlast = slen + blen * numBreaks
-        dlen | slen `mod` every > 0 = dlast + blen
-             | otherwise            = dlast
-        numBreaks = slen `div` every
+        every = min slen every'
+        dlen | rem > 0   = dlast + blen
+             | otherwise = dlast
+        (numBreaks, rem) = slen `divMod` every
 
 -- | Decode a base64-encoded string.  This function strictly follows
 -- the specification in RFC 4648,
