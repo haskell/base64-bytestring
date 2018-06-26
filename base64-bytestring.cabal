@@ -1,7 +1,7 @@
 name:                base64-bytestring
 version:             1.0.0.1
 synopsis:            Fast base64 encoding and decoding for ByteStrings
-description:         Fast base64 encoding and decoding for ByteStrings
+description:         This package provides support for encoding and decoding binary data according to @base64@ (see also <https://tools.ietf.org/html/rfc4648 RFC 4648>) for strict and lazy ByteStrings.
 homepage:            https://github.com/haskell/base64-bytestring
 bug-reports:         https://github.com/haskell/base64-bytestring/issues
 license:             BSD3
@@ -38,7 +38,6 @@ library
     bytestring >= 0.9.0
 
   ghc-options: -Wall -funbox-strict-fields
-  ghc-prof-options: -auto-all
 
 test-suite tests
   type: exitcode-stdio-1.0
