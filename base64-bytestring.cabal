@@ -2,12 +2,13 @@ name:                base64-bytestring
 version:             1.0.0.1
 synopsis:            Fast base64 encoding and decoding for ByteStrings
 description:         Fast base64 encoding and decoding for ByteStrings
-homepage:            https://github.com/bos/base64-bytestring
-bug-reports:         https://github.com/bos/base64-bytestring/issues
+homepage:            https://github.com/haskell/base64-bytestring
+bug-reports:         https://github.com/haskell/base64-bytestring/issues
 license:             BSD3
 license-file:        LICENSE
 author:              Bryan O'Sullivan <bos@serpentine.com>
-maintainer:          Bryan O'Sullivan <bos@serpentine.com>
+maintainer:          Herbert Valerio Riedel <hvr@gnu.org>,
+                     Mikhail Glushenkov <mikhail.glushenkov@gmail.com>
 copyright:           2010-2012 Bryan O'Sullivan
 category:            Data
 build-type:          Simple

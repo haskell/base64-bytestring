@@ -18,20 +18,15 @@ This library is written in pure Haskell, and it's fast:
 # Get involved!
 
 Please report bugs via the
-[github issue tracker](https://github.com/bos/base64-bytestring).
+[github issue tracker](https://github.com/haskell/base64-bytestring).
 
-Master [git repository](https://github.com/bos/base64-bytestring):
+Master [git repository](https://github.com/haskell/base64-bytestring):
 
-* `git clone git://github.com/bos/base64-bytestring.git`
-
-And a [Mercurial mirror](https://bitbucket.org/bos/base64-bytestring):
-
-* `hg clone https://bitbucket.org/bos/base64-bytestring`
-
-(You can create and contribute changes using either Mercurial or git.)
+* `git clone git://github.com/haskell/base64-bytestring.git`
 
 
 # Authors
 
-This library is written and maintained by Bryan O'Sullivan,
-<bos@serpentine.com>.
+This library is written by Bryan O'Sullivan, <bos@serpentine.com>. It
+is maintained by Herbert Valerio Riedel, <hvr@gnu.org> and Mikhail
+Glushenkov, <mikhail.glushenkov@gmail.com>.
