@@ -35,13 +35,13 @@ encode s = encodeWith (mkEncodeTable alphabet) s
 
 -- | Decode a base64-encoded string.  This function strictly follows
 -- the specification in RFC 4648,
--- <http://www.apps.ietf.org/rfc/rfc4648.html>.
+-- <http://www.ietf.org/rfc/rfc4648.txt>.
 decode :: ByteString -> Either String ByteString
 decode s = decodeWithTable decodeFP s
 
 -- | Decode a base64-encoded string.  This function is lenient in
 -- following the specification from RFC 4648,
--- <http://www.apps.ietf.org/rfc/rfc4648.html>, and will not generate
+-- <http://www.ietf.org/rfc/rfc4648.txt>, and will not generate
 -- parse errors no matter how poor its input.
 decodeLenient :: ByteString -> ByteString
 decodeLenient s = decodeLenientWithTable decodeFP s
