@@ -1,4 +1,4 @@
-# Fast base64 support
+# Fast base64 support [![Hackage version](https://img.shields.io/hackage/v/base64-bytestring.svg?label=Hackage)](https://hackage.haskell.org/package/base64-bytestring) [![Stackage version](https://www.stackage.org/package/base64-bytestring/badge/lts?label=Stackage)](https://www.stackage.org/package/base64-bytestring) [![Build Status](https://secure.travis-ci.org/haskell/base64-bytestring.svg?branch=master)](http://travis-ci.org/haskell/base64-bytestring)
 
 This package provides a Haskell library for working with base64-encoded
 data quickly and efficiently, using the ByteString type.
