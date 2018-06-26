@@ -35,8 +35,8 @@ encode :: L.ByteString -> L.ByteString
 encode = L.fromChunks . map B64.encode . reChunkIn 3 . L.toChunks
 
 -- | Decode a base64-encoded string.  This function strictly follows
--- the specification in RFC 4648,
--- <http://www.apps.ietf.org/rfc/rfc4648.html>.
+-- the specification in
+-- <http://tools.ietf.org/rfc/rfc4648 RFC 4648>.
 decode :: L.ByteString -> Either String L.ByteString
 decode b = -- Returning an Either type means that the entire result will
            -- need to be in memory at once anyway, so we may as well
@@ -49,8 +49,8 @@ decode b = -- Returning an Either type means that the entire result will
            Right b' -> Right $ L.fromChunks [b']
 
 -- | Decode a base64-encoded string.  This function is lenient in
--- following the specification from RFC 4648,
--- <http://www.apps.ietf.org/rfc/rfc4648.html>, and will not generate
+-- following the specification from
+-- <http://tools.ietf.org/rfc/rfc4648 RFC 4648>, and will not generate
 -- parse errors no matter how poor its input.
 decodeLenient :: L.ByteString -> L.ByteString
 decodeLenient = L.fromChunks . map B64.decodeLenient . reChunkIn 4 . L.toChunks
@@ -58,4 +58,3 @@ decodeLenient = L.fromChunks . map B64.decodeLenient . reChunkIn 4 . L.toChunks
     where -- We filter out and '=' padding here, but B64.decodeLenient
           -- handles that
           goodChar c = isAlphaNum c || c == '-' || c == '_'
-

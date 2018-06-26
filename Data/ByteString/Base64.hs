@@ -33,16 +33,16 @@ import Foreign.ForeignPtr (ForeignPtr)
 encode :: ByteString -> ByteString
 encode s = encodeWith (mkEncodeTable alphabet) s
 
--- | Decode a base64-encoded string.  This function strictly follows
--- the specification in RFC 4648,
--- <http://www.ietf.org/rfc/rfc4648.txt>.
+-- | Decode a base64-encoded string. This function strictly follows
+-- the specification in
+-- <http://tools.ietf.org/rfc/rfc4648 RFC 4648>.
 decode :: ByteString -> Either String ByteString
 decode s = decodeWithTable decodeFP s
 
 -- | Decode a base64-encoded string.  This function is lenient in
--- following the specification from RFC 4648,
--- <http://www.ietf.org/rfc/rfc4648.txt>, and will not generate
--- parse errors no matter how poor its input.
+-- following the specification from
+-- <http://tools.ietf.org/rfc/rfc4648 RFC 4648>, and will not
+-- generate parse errors no matter how poor its input.
 decodeLenient :: ByteString -> ByteString
 decodeLenient s = decodeLenientWithTable decodeFP s
 

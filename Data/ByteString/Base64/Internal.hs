@@ -145,8 +145,8 @@ joinWith brk@(PS bfp boff blen) every bs@(PS sfp soff slen)
         numBreaks = slen `div` every
 
 -- | Decode a base64-encoded string.  This function strictly follows
--- the specification in RFC 4648,
--- <http://www.apps.ietf.org/rfc/rfc4648.html>.
+-- the specification in
+-- <http://tools.ietf.org/rfc/rfc4648 RFC 4648>.
 -- This function takes the decoding table (for @base64@ or @base64url@) as
 -- the first paramert.
 decodeWithTable :: ForeignPtr Word8 -> ByteString -> Either String ByteString
@@ -198,11 +198,11 @@ decodeWithTable decodeFP (PS sfp soff slen)
         dlen = di * 3
 
 -- | Decode a base64-encoded string.  This function is lenient in
--- following the specification from RFC 4648,
--- <http://www.apps.ietf.org/rfc/rfc4648.html>, and will not generate
--- parse errors no matter how poor its input.
--- This function takes the decoding table (for @base64@ or @base64url@) as
--- the first paramert.
+-- following the specification from
+-- <http://tools.ietf.org/rfc/rfc4648 RFC 4648>, and will not
+-- generate parse errors no matter how poor its input.  This function
+-- takes the decoding table (for @base64@ or @base64url@) as the first
+-- paramert.
 decodeLenientWithTable :: ForeignPtr Word8 -> ByteString -> ByteString
 decodeLenientWithTable decodeFP (PS sfp soff slen)
     | dlen <= 0 = B.empty

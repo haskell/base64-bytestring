@@ -34,15 +34,15 @@ encode :: ByteString -> ByteString
 encode = encodeWith (mkEncodeTable alphabet)
 
 -- | Decode a base64url-encoded string.  This function strictly follows
--- the specification in RFC 4648,
--- <http://www.apps.ietf.org/rfc/rfc4648.html>.
+-- the specification in
+-- <http://tools.ietf.org/rfc/rfc4648 RFC 4648>.
 decode :: ByteString -> Either String ByteString
 decode = decodeWithTable decodeFP
 
 -- | Decode a base64url-encoded string.  This function is lenient in
--- following the specification from RFC 4648,
--- <http://www.apps.ietf.org/rfc/rfc4648.html>, and will not generate
--- parse errors no matter how poor its input.
+-- following the specification from
+-- <http://tools.ietf.org/rfc/rfc4648 RFC 4648>, and will not
+-- generate parse errors no matter how poor its input.
 decodeLenient :: ByteString -> ByteString
 decodeLenient = decodeLenientWithTable decodeFP
 
