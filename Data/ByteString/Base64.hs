@@ -36,6 +36,11 @@ encode s = encodeWith (mkEncodeTable alphabet) s
 -- | Decode a base64-encoded string. This function strictly follows
 -- the specification in
 -- <http://tools.ietf.org/rfc/rfc4648 RFC 4648>.
+--
+-- (Note: this means that even @"\n", "\r\n"@ as line breaks are rejected
+-- rather than ignored.  If you are using this in the context of a
+-- standard that overrules RFC 4648 such as HTTP multipart mime bodies,
+-- consider using 'decodeLenient'.)
 decode :: ByteString -> Either String ByteString
 decode s = decodeWithTable decodeFP s
 
