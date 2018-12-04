@@ -1,3 +1,8 @@
+# 1.0.0.2
+
+* Fixed a write past allocated memory in joinWith (potential security
+  issue)
+
 # 0.1.0.3
 
 *  Fixed: wrong encoding table on big-endian systems
