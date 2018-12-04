@@ -28,6 +28,7 @@ import qualified Data.ByteString as B
 import Data.ByteString.Internal (ByteString(..), mallocByteString, memcpy,
                                  unsafeCreate)
 import Data.Word (Word8, Word16, Word32)
+import Control.Exception (assert)
 import Foreign.ForeignPtr (ForeignPtr, withForeignPtr, castForeignPtr)
 import Foreign.Ptr (Ptr, castPtr, minusPtr, plusPtr)
 import Foreign.Storable (peek, peekElemOff, poke)
@@ -129,15 +130,17 @@ joinWith brk@(PS bfp boff blen) every' bs@(PS sfp soff slen)
               sp0 = sptr `plusPtr` soff
               sEnd = sp0 `plusPtr` slen
               dLast = dptr `plusPtr` dlen
-              loop !dp !sp
+              loop !dp !sp !written
                   | dp == dLast = return ()
                   | otherwise = do
                 let chunkSize = min every (sEnd `minusPtr` sp)
                 memcpy dp sp (fromIntegral chunkSize)
                 let dp' = dp `plusPtr` chunkSize
                 memcpy dp' bp (fromIntegral blen)
-                loop (dp' `plusPtr` blen) (sp `plusPtr` chunkSize)
-          loop dptr sp0
+                let written' = written + chunkSize + blen
+                assert (written' <= dlen) $
+                  loop (dp' `plusPtr` blen) (sp `plusPtr` chunkSize) written'
+          loop dptr sp0 0
   where dlast = slen + blen * numBreaks
         every = min slen every'
         dlen | rem > 0   = dlast + blen
