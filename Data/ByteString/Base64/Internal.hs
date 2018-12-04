@@ -143,9 +143,9 @@ joinWith brk@(PS bfp boff blen) every' bs@(PS sfp soff slen)
           loop dptr sp0 0
   where dlast = slen + blen * numBreaks
         every = min slen every'
-        dlen | rem > 0   = dlast + blen
-             | otherwise = dlast
-        (numBreaks, rem) = slen `divMod` every
+        dlen | rmndr > 0   = dlast + blen
+             | otherwise   = dlast
+        (numBreaks, rmndr) = slen `divMod` every
 
 -- | Decode a base64-encoded string.  This function strictly follows
 -- the specification in
