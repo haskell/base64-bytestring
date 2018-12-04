@@ -59,6 +59,22 @@ test-suite tests
     test-framework-quickcheck2,
     test-framework-hunit
 
+benchmark benchmarks
+  type: exitcode-stdio-1.0
+  hs-source-dirs: benchmarks
+  main-is: BM.hs
+
+  ghc-options:
+    -Wall -threaded -rtsopts
+
+  build-depends:
+    base,
+    bytestring,
+    containers,
+    deepseq,
+    base64-bytestring,
+    criterion
+
 source-repository head
   type:     git
   location: git://github.com/bos/base64-bytestring

@@ -1,14 +1,19 @@
+{-# LANGUAGE CPP               #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-import Control.DeepSeq (NFData(rnf))
 import Criterion.Main
 import qualified Data.ByteString.Base64 as B
 import qualified Data.ByteString.Base64.Lazy as L
 import qualified Data.ByteString.Base64.URL as U
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy as L
-import qualified Data.ByteString.Lazy.Internal as L
 
+#if !MIN_VERSION_bytestring(0,10,0)
+import Control.DeepSeq (NFData(rnf))
+import qualified Data.ByteString.Lazy.Internal as L
+#endif
+
+strict :: String -> B.ByteString -> Benchmark
 strict name orig =
     bgroup name [
       bgroup "normal" [
@@ -24,10 +29,13 @@ strict name orig =
     ]
   where enc = U.encode orig
 
+#if !MIN_VERSION_bytestring(0,10,0)
 instance NFData L.ByteString where
     rnf L.Empty        = ()
     rnf (L.Chunk _ ps) = rnf ps
+#endif
 
+lazy :: String -> L.ByteString -> Benchmark
 lazy name orig =
     bgroup name [
       bench "decode" $ nf L.decode enc
