@@ -18,6 +18,7 @@ import Data.ByteString (ByteString)
 import Data.ByteString.Char8 ()
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy.Char8 as L
+import qualified Data.List.Split as List
 import Data.String
 import Test.HUnit hiding (Test)
 
@@ -35,6 +36,7 @@ tests = [
     testGroup "joinWith" [
         testProperty "all_endsWith" joinWith_all_endsWith
       , testProperty "endsWith" joinWith_endsWith
+      , testProperty "pureImpl" joinWith_pureImpl
     ]
   , testsRegular $ Impl "Base64"     Base64.encode     Base64.decode     Base64.decodeLenient
   , testsRegular $ Impl "LBase64"    LBase64.encode    LBase64.decode    LBase64.decodeLenient
@@ -68,6 +70,15 @@ instance Arbitrary ByteString where
 -- arbitrary content
 instance Arbitrary L.ByteString where
   arbitrary = liftM L.pack arbitrary
+
+joinWith_pureImpl :: ByteString -> Positive Int -> ByteString -> Bool
+joinWith_pureImpl brk (Positive int) str = pureImpl == Base64.joinWith brk int str
+  where
+    pureImpl | B.null brk = str
+             | B.null str = brk
+             | otherwise  =
+               B.pack . concat $
+               [ s ++ (B.unpack brk) | s <- List.chunksOf int (B.unpack str) ]
 
 joinWith_endsWith :: ByteString -> Positive Int -> ByteString -> Bool
 joinWith_endsWith brk (Positive int) str =

@@ -55,6 +55,7 @@ test-suite tests
     base,
     containers,
     bytestring,
+    split,
     test-framework,
     test-framework-quickcheck2,
     test-framework-hunit
