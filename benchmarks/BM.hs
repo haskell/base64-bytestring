@@ -5,6 +5,7 @@ import Criterion.Main
 import qualified Data.ByteString.Base64 as B
 import qualified Data.ByteString.Base64.Lazy as L
 import qualified Data.ByteString.Base64.URL as U
+import qualified Data.ByteString.Base64.URL.Lazy as LU
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy as L
 
@@ -38,8 +39,16 @@ instance NFData L.ByteString where
 lazy :: String -> L.ByteString -> Benchmark
 lazy name orig =
     bgroup name [
-      bench "decode" $ nf L.decode enc
-    , bench "encode" $ nf L.encode orig
+      bgroup "normal" [
+        bench "decode" $ nf L.decode enc
+      , bench "decodeLenient" $ nf L.decodeLenient enc
+      , bench "encode" $ nf L.encode orig
+      ]
+    , bgroup "url" [
+        bench "decode" $ nf LU.decode enc
+      , bench "decodeLenient" $ nf LU.decodeLenient enc
+      , bench "encode" $ nf LU.encode orig
+      ]
     ]
   where enc = L.encode orig
 

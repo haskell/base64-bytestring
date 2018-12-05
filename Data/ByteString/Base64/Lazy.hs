@@ -57,4 +57,5 @@ decodeLenient = L.fromChunks . map B64.decodeLenient . reChunkIn 4 . L.toChunks
               . LC.filter goodChar
     where -- We filter out and '=' padding here, but B64.decodeLenient
           -- handles that
-          goodChar c = isAlphaNum c || c == '+' || c == '/'
+          goodChar c = isDigit c || isAsciiUpper c || isAsciiLower c
+                                 || c == '+' || c == '/'

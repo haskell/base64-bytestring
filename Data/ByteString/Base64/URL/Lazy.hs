@@ -58,3 +58,4 @@ decodeLenient = L.fromChunks . map B64.decodeLenient . reChunkIn 4 . L.toChunks
     where -- We filter out and '=' padding here, but B64.decodeLenient
           -- handles that
           goodChar c = isAlphaNum c || c == '-' || c == '_'
+
