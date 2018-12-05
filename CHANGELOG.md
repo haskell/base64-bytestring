@@ -1,3 +1,10 @@
+# 1.0.0.3 (WIP version)
+
+* Improved documentation
+  ([#23](https://github.com/haskell/base64-bytestring/pull/23)).
+* Improved the performance of decodeLenient a bit
+  ([#21](https://github.com/haskell/base64-bytestring/pull/21)).
+
 # 1.0.0.2
 
 * Fixed a write past allocated memory in joinWith (potential security
