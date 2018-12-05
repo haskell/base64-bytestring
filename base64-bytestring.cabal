@@ -9,7 +9,7 @@ license-file:        LICENSE
 author:              Bryan O'Sullivan <bos@serpentine.com>
 maintainer:          Herbert Valerio Riedel <hvr@gnu.org>,
                      Mikhail Glushenkov <mikhail.glushenkov@gmail.com>
-copyright:           2010-2012 Bryan O'Sullivan
+copyright:           2010-2018 Bryan O'Sullivan et al.
 category:            Data
 build-type:          Simple
 cabal-version:       >=1.8
