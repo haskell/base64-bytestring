@@ -146,6 +146,10 @@ base64url_testData = [("",                "")
                      ,("Example",         "RXhhbXBsZQ==")
                      ,("Ex\0am\254ple",   "RXgAYW3-cGxl")
                      ,("Ex\0am\255ple",   "RXgAYW3_cGxl")
+                     -- padding fluidity cases
+                     ,("Sunn",            "U3Vubg")
+                     ,("Sunn",            "U3Vubg=")
+                     ,("Sunn",            "U3Vubg==") -- actual correct case
                      ]
 
 -- | Generic test given encod enad decode funstions and a
@@ -192,4 +196,3 @@ instance AllRepresentations L.ByteString where
                              -- The last split (empty suffix) gives us the
                              -- [b] case (toChunks ignores an "" element).
                            , (prefix, suffix) <- tail splits ]
-

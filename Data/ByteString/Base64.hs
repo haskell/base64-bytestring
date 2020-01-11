@@ -31,7 +31,7 @@ import Foreign.ForeignPtr (ForeignPtr)
 -- | Encode a string into base64 form.  The result will always be a
 -- multiple of 4 bytes in length.
 encode :: ByteString -> ByteString
-encode s = encodeWith (mkEncodeTable alphabet) s
+encode s = encodeWith True (mkEncodeTable alphabet) s
 
 -- | Decode a base64-encoded string. This function strictly follows
 -- the specification in
@@ -42,7 +42,7 @@ encode s = encodeWith (mkEncodeTable alphabet) s
 -- standard that overrules RFC 4648 such as HTTP multipart mime bodies,
 -- consider using 'decodeLenient'.)
 decode :: ByteString -> Either String ByteString
-decode s = decodeWithTable decodeFP s
+decode s = decodeWithTable False decodeFP s
 
 -- | Decode a base64-encoded string.  This function is lenient in
 -- following the specification from
