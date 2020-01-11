@@ -26,6 +26,7 @@ strict name orig =
         bench "decode" $ whnf U.decode enc
       , bench "decodeLenient" $ whnf U.decodeLenient enc
       , bench "encode" $ whnf U.encode orig
+      , bench "encodeUnpadded" $ whnf U.encodeUnpadded orig
       ]
     ]
   where enc = U.encode orig
@@ -48,6 +49,7 @@ lazy name orig =
         bench "decode" $ nf LU.decode enc
       , bench "decodeLenient" $ nf LU.decodeLenient enc
       , bench "encode" $ nf LU.encode orig
+      , bench "encodeUnpadded" $ whnf LU.encodeUnpadded orig
       ]
     ]
   where enc = L.encode orig
