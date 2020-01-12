@@ -21,6 +21,7 @@ module Data.ByteString.Base64.Internal
     , done
     , peek8, poke8, peek8_32
     , reChunkIn
+    , Padding(..)
     ) where
 
 import Data.Bits ((.|.), (.&.), shiftL, shiftR)
@@ -43,9 +44,12 @@ poke8 = poke
 peek8_32 :: Ptr Word8 -> IO Word32
 peek8_32 = fmap fromIntegral . peek8
 
+
+data Padding = Padded | Unpadded deriving Eq
+
 -- | Encode a string into base64 form.  The result will always be a multiple
 -- of 4 bytes in length.
-encodeWith :: Bool -> EncodeTable -> ByteString -> ByteString
+encodeWith :: Padding -> EncodeTable -> ByteString -> ByteString
 encodeWith !padding (ET alfaFP encodeTable) (PS sfp soff slen)
     | slen > maxBound `div` 4 =
         error "Data.ByteString.Base64.encode: input too long"
@@ -75,6 +79,7 @@ encodeWith !padding (ET alfaFP encodeTable) (PS sfp soff slen)
               let peekSP m f = (f . fromIntegral) `fmap` peek8 (sp `plusPtr` m)
                   twoMore    = sp `plusPtr` 2 == sEnd
                   equals     = 0x3d :: Word8
+                  doPad = padding == Padded
                   {-# INLINE equals #-}
               !a <- peekSP 0 ((`shiftR` 2) . (.&. 0xfc))
               !b <- peekSP 0 ((`shiftL` 4) . (.&. 0x03))
@@ -88,13 +93,13 @@ encodeWith !padding (ET alfaFP encodeTable) (PS sfp soff slen)
                   poke8 (dp `plusPtr` 1) =<< aidx b'
                   poke8 (dp `plusPtr` 2) c
 
-                  if padding
+                  if doPad
                     then poke8 (dp `plusPtr` 3) equals >> finish (n + 4)
                     else finish (n + 3)
                 else do
                   poke8 (dp `plusPtr` 1) =<< aidx b
 
-                  if padding
+                  if doPad
                     then do
                       poke8 (dp `plusPtr` 2) equals
                       poke8 (dp `plusPtr` 3) equals
@@ -166,13 +171,14 @@ joinWith brk@(PS bfp boff blen) every' bs@(PS sfp soff slen)
 -- <http://tools.ietf.org/rfc/rfc4648 RFC 4648>.
 -- This function takes the decoding table (for @base64@ or @base64url@) as
 -- the first paramert.
-decodeWithTable :: Bool -> ForeignPtr Word8 -> ByteString -> Either String ByteString
+decodeWithTable :: Padding -> ForeignPtr Word8 -> ByteString -> Either String ByteString
 decodeWithTable padding decodeFP bs
-    | padding = go (B.append bs (B.replicate drem 0x3d))
-    | drem /= 0 && (not padding) = Left "invalid padding"
+    | doPad = go (B.append bs (B.replicate drem 0x3d))
+    | drem /= 0 && (not doPad) = Left "invalid padding"
     | dlen <= 0 = Right B.empty
     | otherwise = go bs
   where
+    doPad = padding == Padded
     (di,drem) = (B.length bs) `divMod` 4
     dlen = di * 3
     go (PS sfp soff slen) = unsafePerformIO $ do
