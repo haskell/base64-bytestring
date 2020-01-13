@@ -79,8 +79,4 @@ benchmark benchmarks
 
 source-repository head
   type:     git
-  location: git://github.com/bos/base64-bytestring
-
-source-repository head
-  type:     mercurial
-  location: https://bitbucket.org/bos/base64-bytestring
+  location: git://github.com/haskell/base64-bytestring
