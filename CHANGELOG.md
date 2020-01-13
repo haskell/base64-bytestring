@@ -1,6 +1,10 @@
+# 1.0.0.4 (WIP)
+
+* No changes so far...
+
 # 1.0.0.3
 
-* Made performance more robust 
+* Made performance more robust
   ([#27](https://github.com/haskell/base64-bytestring/pull/27)).
 * Improved documentation
   ([#23](https://github.com/haskell/base64-bytestring/pull/23)).
