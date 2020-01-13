@@ -1,5 +1,7 @@
-# 1.0.0.3 (WIP version)
+# 1.0.0.3
 
+* Made performance more robust 
+  ([#27](https://github.com/haskell/base64-bytestring/pull/27)).
 * Improved documentation
   ([#23](https://github.com/haskell/base64-bytestring/pull/23)).
 * Improved the performance of decodeLenient a bit
