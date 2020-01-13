@@ -10,7 +10,7 @@ author:              Bryan O'Sullivan <bos@serpentine.com>
 maintainer:          Herbert Valerio Riedel <hvr@gnu.org>,
                      Mikhail Glushenkov <mikhail.glushenkov@gmail.com>,
                      Emily Pillmore <emilypi@cohomolo.gy>
-copyright:           2010-2018 Bryan O'Sullivan et al.
+copyright:           2010-2020 Bryan O'Sullivan et al.
 category:            Data
 build-type:          Simple
 cabal-version:       >=1.8
