@@ -91,7 +91,7 @@ encodeWith (ET alfaFP encodeTable) (PS sfp soff slen)
           fill (castPtr dptr) (sptr `plusPtr` soff)
   return $! PS dfp 0 dlen
 
-data EncodeTable = ET (ForeignPtr Word8) (ForeignPtr Word16)
+data EncodeTable = ET !(ForeignPtr Word8) !(ForeignPtr Word16)
 
 -- The encoding table is constructed such that the expansion of a 12-bit
 -- block to a 16-bit block can be done by a single Word16 copy from the
