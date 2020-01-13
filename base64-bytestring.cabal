@@ -8,7 +8,8 @@ license:             BSD3
 license-file:        LICENSE
 author:              Bryan O'Sullivan <bos@serpentine.com>
 maintainer:          Herbert Valerio Riedel <hvr@gnu.org>,
-                     Mikhail Glushenkov <mikhail.glushenkov@gmail.com>
+                     Mikhail Glushenkov <mikhail.glushenkov@gmail.com>,
+                     Emily Pillmore <emilypi@cohomolo.gy>
 copyright:           2010-2018 Bryan O'Sullivan et al.
 category:            Data
 build-type:          Simple
