@@ -1,6 +1,7 @@
-# 1.0.0.4 (WIP)
+# 1.0.1.0 (WIP)
 
-* No changes so far...
+* Added unpadded encode/decode variants
+  ([#26](https://github.com/haskell/base64-bytestring/pull/26)).
 
 # 1.0.0.3
 
