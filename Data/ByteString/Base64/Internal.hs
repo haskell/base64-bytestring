@@ -21,6 +21,7 @@ module Data.ByteString.Base64.Internal
     , done
     , peek8, poke8, peek8_32
     , reChunkIn
+    , Padding(..)
     ) where
 
 import Data.Bits ((.|.), (.&.), shiftL, shiftR)
@@ -43,10 +44,13 @@ poke8 = poke
 peek8_32 :: Ptr Word8 -> IO Word32
 peek8_32 = fmap fromIntegral . peek8
 
+
+data Padding = Padded | Unpadded deriving Eq
+
 -- | Encode a string into base64 form.  The result will always be a multiple
 -- of 4 bytes in length.
-encodeWith :: EncodeTable -> ByteString -> ByteString
-encodeWith (ET alfaFP encodeTable) (PS sfp soff slen)
+encodeWith :: Padding -> EncodeTable -> ByteString -> ByteString
+encodeWith !padding (ET alfaFP encodeTable) (PS sfp soff slen)
     | slen > maxBound `div` 4 =
         error "Data.ByteString.Base64.encode: input too long"
     | otherwise = unsafePerformIO $ do
@@ -57,8 +61,9 @@ encodeWith (ET alfaFP encodeTable) (PS sfp soff slen)
       withForeignPtr sfp $ \sptr -> do
         let aidx n = peek8 (aptr `plusPtr` n)
             sEnd = sptr `plusPtr` (slen + soff)
-            fill !dp !sp
-              | sp `plusPtr` 2 >= sEnd = complete (castPtr dp) sp
+            finish !n = return (PS dfp 0 n)
+            fill !dp !sp !n
+              | sp `plusPtr` 2 >= sEnd = complete (castPtr dp) sp n
               | otherwise = {-# SCC "encode/fill" #-} do
               i <- peek8_32 sp
               j <- peek8_32 (sp `plusPtr` 1)
@@ -67,29 +72,43 @@ encodeWith (ET alfaFP encodeTable) (PS sfp soff slen)
                   enc = peekElemOff ep . fromIntegral
               poke dp =<< enc (w `shiftR` 12)
               poke (dp `plusPtr` 2) =<< enc (w .&. 0xfff)
-              fill (dp `plusPtr` 4) (sp `plusPtr` 3)
-            complete dp sp
-                | sp == sEnd = return ()
+              fill (dp `plusPtr` 4) (sp `plusPtr` 3) (n + 4)
+            complete dp sp n
+                | sp == sEnd = finish n
                 | otherwise  = {-# SCC "encode/complete" #-} do
-              let peekSP n f = (f . fromIntegral) `fmap` peek8 (sp `plusPtr` n)
+              let peekSP m f = (f . fromIntegral) `fmap` peek8 (sp `plusPtr` m)
                   twoMore    = sp `plusPtr` 2 == sEnd
                   equals     = 0x3d :: Word8
+                  doPad = padding == Padded
                   {-# INLINE equals #-}
               !a <- peekSP 0 ((`shiftR` 2) . (.&. 0xfc))
               !b <- peekSP 0 ((`shiftL` 4) . (.&. 0x03))
-              !b' <- if twoMore
-                     then peekSP 1 ((.|. b) . (`shiftR` 4) . (.&. 0xf0))
-                     else return b
+
               poke8 dp =<< aidx a
-              poke8 (dp `plusPtr` 1) =<< aidx b'
-              !c <- if twoMore
-                    then aidx =<< peekSP 1 ((`shiftL` 2) . (.&. 0x0f))
-                    else return equals
-              poke8 (dp `plusPtr` 2) c
-              poke8 (dp `plusPtr` 3) equals
+
+              if twoMore
+                then do
+                  !b' <- peekSP 1 ((.|. b) . (`shiftR` 4) . (.&. 0xf0))
+                  !c <- aidx =<< peekSP 1 ((`shiftL` 2) . (.&. 0x0f))
+                  poke8 (dp `plusPtr` 1) =<< aidx b'
+                  poke8 (dp `plusPtr` 2) c
+
+                  if doPad
+                    then poke8 (dp `plusPtr` 3) equals >> finish (n + 4)
+                    else finish (n + 3)
+                else do
+                  poke8 (dp `plusPtr` 1) =<< aidx b
+
+                  if doPad
+                    then do
+                      poke8 (dp `plusPtr` 2) equals
+                      poke8 (dp `plusPtr` 3) equals
+                      finish (n + 4)
+                    else finish (n + 2)
+
+
         withForeignPtr dfp $ \dptr ->
-          fill (castPtr dptr) (sptr `plusPtr` soff)
-  return $! PS dfp 0 dlen
+          fill (castPtr dptr) (sptr `plusPtr` soff) 0
 
 data EncodeTable = ET !(ForeignPtr Word8) !(ForeignPtr Word16)
 
@@ -152,53 +171,57 @@ joinWith brk@(PS bfp boff blen) every' bs@(PS sfp soff slen)
 -- <http://tools.ietf.org/rfc/rfc4648 RFC 4648>.
 -- This function takes the decoding table (for @base64@ or @base64url@) as
 -- the first paramert.
-decodeWithTable :: ForeignPtr Word8 -> ByteString -> Either String ByteString
-decodeWithTable decodeFP (PS sfp soff slen)
-    | drem /= 0 = Left "invalid padding"
+decodeWithTable :: Padding -> ForeignPtr Word8 -> ByteString -> Either String ByteString
+decodeWithTable padding decodeFP bs
+    | doPad = go (B.append bs (B.replicate drem 0x3d))
+    | drem /= 0 && (not doPad) = Left "invalid padding"
     | dlen <= 0 = Right B.empty
-    | otherwise = unsafePerformIO $ do
-  dfp <- mallocByteString dlen
-  withForeignPtr decodeFP $ \ !decptr -> do
-    let finish dbytes = return . Right $! if dbytes > 0
-                                          then PS dfp 0 dbytes
-                                          else B.empty
-        bail = return . Left
-    withForeignPtr sfp $ \ !sptr -> do
-      let sEnd = sptr `plusPtr` (slen + soff)
-          look p = do
-            ix <- fromIntegral `fmap` peek8 p
-            v <- peek8 (decptr `plusPtr` ix)
-            return $! fromIntegral v :: IO Word32
-          fill !dp !sp !n
-            | sp >= sEnd = finish n
-            | otherwise = {-# SCC "decodeWithTable/fill" #-} do
-            a <- look sp
-            b <- look (sp `plusPtr` 1)
-            c <- look (sp `plusPtr` 2)
-            d <- look (sp `plusPtr` 3)
-            let w = (a `shiftL` 18) .|. (b `shiftL` 12) .|.
-                    (c `shiftL` 6) .|. d
-            if a == done || b == done
-              then bail $ "invalid padding near offset " ++
-                   show (sp `minusPtr` sptr)
-              else if a .|. b .|. c .|. d == x
-              then bail $ "invalid base64 encoding near offset " ++
-                   show (sp `minusPtr` sptr)
-              else do
-                poke8 dp $ fromIntegral (w `shiftR` 16)
-                if c == done
-                  then finish $ n + 1
+    | otherwise = go bs
+  where
+    doPad = padding == Padded
+    (di,drem) = (B.length bs) `divMod` 4
+    dlen = di * 3
+    go (PS sfp soff slen) = unsafePerformIO $ do
+      dfp <- mallocByteString dlen
+      withForeignPtr decodeFP $ \ !decptr -> do
+        let finish dbytes = return . Right $! if dbytes > 0
+                                              then PS dfp 0 dbytes
+                                              else B.empty
+            bail = return . Left
+        withForeignPtr sfp $ \ !sptr -> do
+          let sEnd = sptr `plusPtr` (slen + soff)
+              look p = do
+                ix <- fromIntegral `fmap` peek8 p
+                v <- peek8 (decptr `plusPtr` ix)
+                return $! fromIntegral v :: IO Word32
+              fill !dp !sp !n
+                | sp >= sEnd = finish n
+                | otherwise = {-# SCC "decodeWithTable/fill" #-} do
+                a <- look sp
+                b <- look (sp `plusPtr` 1)
+                c <- look (sp `plusPtr` 2)
+                d <- look (sp `plusPtr` 3)
+                let w = (a `shiftL` 18) .|. (b `shiftL` 12) .|.
+                        (c `shiftL` 6) .|. d
+                if a == done || b == done
+                  then bail $ "invalid padding near offset " ++
+                       show (sp `minusPtr` sptr)
+                  else if a .|. b .|. c .|. d == x
+                  then bail $ "invalid base64 encoding near offset " ++
+                       show (sp `minusPtr` sptr)
                   else do
-                    poke8 (dp `plusPtr` 1) $ fromIntegral (w `shiftR` 8)
-                    if d == done
-                      then finish $! n + 2
+                    poke8 dp $ fromIntegral (w `shiftR` 16)
+                    if c == done
+                      then finish $ n + 1
                       else do
-                        poke8 (dp `plusPtr` 2) $ fromIntegral w
-                        fill (dp `plusPtr` 3) (sp `plusPtr` 4) (n+3)
-      withForeignPtr dfp $ \dptr ->
-        fill dptr (sptr `plusPtr` soff) 0
-  where (di,drem) = slen `divMod` 4
-        dlen = di * 3
+                        poke8 (dp `plusPtr` 1) $ fromIntegral (w `shiftR` 8)
+                        if d == done
+                          then finish $! n + 2
+                          else do
+                            poke8 (dp `plusPtr` 2) $ fromIntegral w
+                            fill (dp `plusPtr` 3) (sp `plusPtr` 4) (n+3)
+          withForeignPtr dfp $ \dptr ->
+            fill dptr (sptr `plusPtr` soff) 0
 
 -- | Decode a base64-encoded string.  This function is lenient in
 -- following the specification from

@@ -192,4 +192,3 @@ instance AllRepresentations L.ByteString where
                              -- The last split (empty suffix) gives us the
                              -- [b] case (toChunks ignores an "" element).
                            , (prefix, suffix) <- tail splits ]
-

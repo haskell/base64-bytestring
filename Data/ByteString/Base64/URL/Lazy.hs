@@ -18,6 +18,7 @@
 module Data.ByteString.Base64.URL.Lazy
     (
       encode
+    , encodeUnpadded
     , decode
     , decodeLenient
     ) where
@@ -33,6 +34,13 @@ import Data.Char
 -- multiple of 4 bytes in length.
 encode :: L.ByteString -> L.ByteString
 encode = L.fromChunks . map B64.encode . reChunkIn 3 . L.toChunks
+
+-- | Encode a string into unpadded base64url form.
+encodeUnpadded :: L.ByteString -> L.ByteString
+encodeUnpadded = L.fromChunks
+    . map B64.encodeUnpadded
+    . reChunkIn 3
+    . L.toChunks
 
 -- | Decode a base64-encoded string.  This function strictly follows
 -- the specification in
@@ -58,4 +66,3 @@ decodeLenient = L.fromChunks . map B64.decodeLenient . reChunkIn 4 . L.toChunks
     where -- We filter out and '=' padding here, but B64.decodeLenient
           -- handles that
           goodChar c = isAlphaNum c || c == '-' || c == '_'
-

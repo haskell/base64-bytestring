@@ -17,6 +17,7 @@
 module Data.ByteString.Base64.URL
     (
       encode
+    , encodeUnpadded
     , decode
     , decodeLenient
     , joinWith
@@ -31,13 +32,17 @@ import Foreign.ForeignPtr (ForeignPtr)
 -- | Encode a string into base64url form.  The result will always be a
 -- multiple of 4 bytes in length.
 encode :: ByteString -> ByteString
-encode = encodeWith (mkEncodeTable alphabet)
+encode = encodeWith Padded (mkEncodeTable alphabet)
 
--- | Decode a base64url-encoded string.  This function strictly follows
--- the specification in
--- <http://tools.ietf.org/rfc/rfc4648 RFC 4648>.
+-- | Encode a string into unpadded base64url form.
+encodeUnpadded :: ByteString -> ByteString
+encodeUnpadded = encodeWith Unpadded (mkEncodeTable alphabet)
+
+-- | Decode a base64url-encoded string applying padding if necessary.
+-- This function follows the specification in <http://tools.ietf.org/rfc/rfc4648 RFC 4648>
+-- and in <https://tools.ietf.org/html/rfc7049#section-2.4.4.2 RFC 7049 2.4>
 decode :: ByteString -> Either String ByteString
-decode = decodeWithTable decodeFP
+decode = decodeWithTable Padded decodeFP
 
 -- | Decode a base64url-encoded string.  This function is lenient in
 -- following the specification from
