@@ -1,5 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
-
+{-# LANGUAGE DoAndIfThenElse #-}
 -- |
 -- Module      : Data.ByteString.Base64.Internal
 -- Copyright   : (c) 2010 Bryan O'Sullivan
@@ -45,7 +45,7 @@ peek8_32 :: Ptr Word8 -> IO Word32
 peek8_32 = fmap fromIntegral . peek8
 
 
-data Padding = Padded | Unpadded deriving Eq
+data Padding = Padded | Don'tCare | Unpadded deriving Eq
 
 -- | Encode a string into base64 form.  The result will always be a multiple
 -- of 4 bytes in length.
@@ -172,16 +172,41 @@ joinWith brk@(PS bfp boff blen) every' bs@(PS sfp soff slen)
 -- This function takes the decoding table (for @base64@ or @base64url@) as
 -- the first paramert.
 decodeWithTable :: Padding -> ForeignPtr Word8 -> ByteString -> Either String ByteString
-decodeWithTable padding decodeFP bs
-    | doPad = go (B.append bs (B.replicate drem 0x3d))
-    | drem /= 0 && (not doPad) = Left "invalid padding"
-    | dlen <= 0 = Right B.empty
-    | otherwise = go bs
+decodeWithTable _ _ (PS _ _ 0) = Right B.empty
+decodeWithTable padding decodeFP bs@(PS !fp !o !l) = unsafePerformIO $
+   case padding of
+     Padded
+       | r /= 0 -> err "Base64-encoded bytestring required to be padded"
+       | otherwise -> go bs
+     Don'tCare
+       | r == 0 -> go bs
+       | r == 2 -> go (B.append bs (B.replicate 2 0x3d))
+       | r == 3 -> go (B.append bs (B.replicate 1 0x3d))
+       | otherwise -> err "Base64-encoded bytestring has invalid size"
+     Unpadded
+       | r == 0 -> validateUnpadded (go bs)
+       | r == 2 -> validateUnpadded (go (B.append bs (B.replicate 2 0x3d)))
+       | r == 3 -> validateUnpadded (go (B.append bs (B.replicate 1 0x3d)))
+       | otherwise -> err "Base64-encoded bytestring has invalid size"
   where
-    doPad = padding == Padded
-    (di,drem) = (B.length bs) `divMod` 4
-    dlen = di * 3
-    go (PS sfp soff slen) = unsafePerformIO $ do
+    err = return . Left
+
+    (q, r) = (B.length bs) `divMod` 4
+
+    dlen = q * 3
+
+    validateUnpadded io = withForeignPtr fp $ \p -> do
+      let !end = l + o
+      a <- peek (plusPtr p (end - 1))
+      b <- peek (plusPtr p (end - 2))
+
+      let !pad = 0x3d :: Word8
+      if a == pad && b == pad
+      then err "Base64-encoded bytestring required to be unpadded"
+      else io
+
+
+    go (PS !sfp !soff !slen) = do
       dfp <- mallocByteString dlen
       withForeignPtr decodeFP $ \ !decptr -> do
         let finish dbytes = return . Right $! if dbytes > 0
