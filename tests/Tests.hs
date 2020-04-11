@@ -38,10 +38,12 @@ tests = [
       , testProperty "endsWith" joinWith_endsWith
       , testProperty "pureImpl" joinWith_pureImpl
     ]
-  , testsRegular $ Impl "Base64"     Base64.encode     Base64.decode     Base64.decodeLenient
-  , testsRegular $ Impl "LBase64"    LBase64.encode    LBase64.decode    LBase64.decodeLenient
-  , testsURL     $ Impl "Base64URL"  Base64URL.encode  Base64URL.decode  Base64URL.decodeLenient
-  , testsURL     $ Impl "LBase64URL" LBase64URL.encode LBase64URL.decode LBase64URL.decodeLenient
+  , testsRegular $ Impl "Base64" Base64.encode Base64.decode Base64.decodeLenient
+  , testsRegular $ Impl "LBase64" LBase64.encode LBase64.decode LBase64.decodeLenient
+  , testsURL $ Impl "Base64URL" Base64URL.encode Base64URL.decode Base64URL.decodeLenient
+  , testsURL $ Impl "LBase64URL" LBase64URL.encode LBase64URL.decode LBase64URL.decodeLenient
+  , testsURL $ Impl "Base64URLPadded" Base64URL.encode Base64URL.decodePadded Base64URL.decodeLenient
+  , testsURLNopad $ Impl "Base64URLUnpadded" Base64URL.encodeUnpadded Base64URL.decodeUnpadded Base64URL.decodeLenient
   ]
 
 testsRegular :: (IsString bs, AllRepresentations bs, Show bs, Eq bs, Arbitrary bs) => Impl bs -> Test
@@ -49,6 +51,9 @@ testsRegular = testsWith base64_testData
 
 testsURL :: (IsString bs, AllRepresentations bs, Show bs, Eq bs, Arbitrary bs) => Impl bs -> Test
 testsURL = testsWith base64url_testData
+
+testsURLNopad :: (IsString bs, AllRepresentations bs, Show bs, Eq bs, Arbitrary bs) => Impl bs -> Test
+testsURLNopad = testsWith base64url_testData_nopad
 
 testsWith :: (IsString bs, AllRepresentations bs, Show bs, Eq bs, Arbitrary bs)
           => [(bs, bs)] -> Impl bs -> Test
@@ -148,6 +153,20 @@ base64url_testData = [("",                "")
                      ,("Ex\0am\255ple",   "RXgAYW3_cGxl")
                      ]
 
+base64url_testData_nopad :: IsString bs => [(bs, bs)]
+base64url_testData_nopad = [("",                "")
+                           ,("\0",              "AA")
+                           ,("\255",            "_w")
+                           ,("E",               "RQ")
+                           ,("Ex",              "RXg")
+                           ,("Exa",             "RXhh")
+                           ,("Exam",            "RXhhbQ")
+                           ,("Examp",           "RXhhbXA")
+                           ,("Exampl",          "RXhhbXBs")
+                           ,("Example",         "RXhhbXBsZQ")
+                           ,("Ex\0am\254ple",   "RXgAYW3-cGxl")
+                           ,("Ex\0am\255ple",   "RXgAYW3_cGxl")
+                           ]
 -- | Generic test given encod enad decode funstions and a
 -- list of (plain, encoded) pairs
 base64_string_test :: (AllRepresentations bs, Eq bs, Show bs)
