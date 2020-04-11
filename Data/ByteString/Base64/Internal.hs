@@ -201,7 +201,7 @@ decodeWithTable padding decodeFP bs@(PS !fp !o !l) = unsafePerformIO $
       b <- peek (plusPtr p (end - 2))
 
       let !pad = 0x3d :: Word8
-      if a == pad && b == pad
+      if a == pad || b == pad
       then err "Base64-encoded bytestring required to be unpadded"
       else io
 

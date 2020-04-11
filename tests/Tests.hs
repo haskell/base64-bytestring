@@ -1,3 +1,4 @@
+{-# LANGUAGE DoAndIfThenElse #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -16,6 +17,7 @@ import qualified Data.ByteString.Base64.Lazy     as LBase64
 import qualified Data.ByteString.Base64.URL      as Base64URL
 import qualified Data.ByteString.Base64.URL.Lazy as LBase64URL
 import Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
 import Data.ByteString.Char8 ()
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy.Char8 as L
@@ -50,10 +52,9 @@ tests =
     , testsURL $ Impl "Base64URLPadded" Base64URL.encode Base64URL.decodePadded Base64URL.decodeLenient
     , testsURLNopad $ Impl "Base64URLUnpadded" Base64URL.encodeUnpadded Base64URL.decodeUnpadded Base64URL.decodeLenient
     ]
-  -- , testGroup "unit tests"
-  --   [ paddingCoherenceTests
-  --   , sizeTests
-  --   ]
+  , testGroup "unit tests"
+    [ paddingCoherenceTests
+    ]
   ]
 
 testsRegular
@@ -273,3 +274,61 @@ instance AllRepresentations L.ByteString where
                              -- [b] case (toChunks ignores an "" element).
                  , (prefix, suffix) <- tail splits
                  ]
+
+paddingCoherenceTests :: Test
+paddingCoherenceTests = testGroup "padded/unpadded coherence"
+    [ testGroup "URL decodePadded"
+      [ padtest "<" "PA=="
+      , padtest "<<" "PDw="
+      , padtest "<<?" "PDw_"
+      , padtest "<<??" "PDw_Pw=="
+      , padtest "<<??>" "PDw_Pz4="
+      , padtest "<<??>>" "PDw_Pz4-"
+      ]
+    , testGroup "URL decodeUnpadded"
+      [ nopadtest "<" "PA"
+      , nopadtest "<<" "PDw"
+      , nopadtest "<<?" "PDw_"
+      , nopadtest "<<??" "PDw_Pw"
+      , nopadtest "<<??>" "PDw_Pz4"
+      , nopadtest "<<??>>" "PDw_Pz4-"
+      ]
+    ]
+  where
+    padtest s t = testCase (show $ if t == "" then "empty" else t) $ do
+      let u = Base64URL.decodeUnpadded t
+          v = Base64URL.decodePadded t
+
+      if BS.last t == 0x3d
+      then do
+        assertEqual "Padding required: no padding fails" u $
+          Left "Base64-encoded bytestring required to be unpadded"
+
+        assertEqual "Padding required: padding succeeds" v $
+          Right s
+      else do
+        --
+        assertEqual "String has no padding: decodes should coincide" u $
+          Right s
+        assertEqual "String has no padding: decodes should coincide" v $
+          Right s
+        assertEqual "String has no padding: decodes should coincide" v u
+
+    nopadtest s t = testCase (show $ if t == "" then "empty" else t) $ do
+        let u = Base64URL.decodePadded t
+            v = Base64URL.decodeUnpadded t
+
+        if BS.length t `mod` 4 == 0
+        then do
+          --
+          assertEqual "String has no padding: decodes should coincide" u $
+            Right s
+          assertEqual "String has no padding: decodes should coincide" v $
+            Right s
+          assertEqual "String has no padding: decodes should coincide" v u
+        else do
+          assertEqual "Unpadded required: padding fails" u $
+            Left "Base64-encoded bytestring required to be padded"
+
+          assertEqual "Unpadded required: unpadding succeeds" v $
+            Right s
