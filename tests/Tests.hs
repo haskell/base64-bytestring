@@ -238,20 +238,19 @@ base64_string_test
 base64_string_test enc dec testData =
       [ testCase ("base64-string: Encode " ++ show plain)
                  (encoded_plain @?= rawEncoded)
-      | (rawPlain, rawEncoded) <- testData,
-        -- For lazy ByteStrings, we want to check not only ["foo"], but
+      | (rawPlain, rawEncoded) <- testData
+      , -- For lazy ByteStrings, we want to check not only ["foo"], but
         -- also ["f","oo"], ["f", "o", "o"] and ["fo", "o"]. The
         -- allRepresentations function gives us all representations of a
         -- lazy ByteString.
-        plain   <- allRepresentations rawPlain,
-        let encoded_plain = enc plain
+        plain <- allRepresentations rawPlain
+      , let encoded_plain = enc plain
       ] ++
-      [ testCase ("base64-string: Decode " ++ show encoded)
-                 (decoded_encoded @?= Right rawPlain)
-      | (rawPlain, rawEncoded) <- testData,
-        -- Again, we need to try all representations of lazy ByteStrings.
-        encoded <- allRepresentations rawEncoded,
-        let decoded_encoded = dec encoded
+      [ testCase ("base64-string: Decode " ++ show encoded) (decoded_encoded @?= Right rawPlain)
+      | (rawPlain, rawEncoded) <- testData
+      , -- Again, we need to try all representations of lazy ByteStrings.
+        encoded <- allRepresentations rawEncoded
+      , let decoded_encoded = dec encoded
       ]
 
 class AllRepresentations a where
@@ -312,7 +311,6 @@ paddingCoherenceTests = testGroup "padded/unpadded coherence"
           Right s
         assertEqual "String has no padding: decodes should coincide" v $
           Right s
-        assertEqual "String has no padding: decodes should coincide" v u
 
     nopadtest s t = testCase (show $ if t == "" then "empty" else t) $ do
         let u = Base64URL.decodePadded t
@@ -325,7 +323,6 @@ paddingCoherenceTests = testGroup "padded/unpadded coherence"
             Right s
           assertEqual "String has no padding: decodes should coincide" v $
             Right s
-          assertEqual "String has no padding: decodes should coincide" v u
         else do
           assertEqual "Unpadded required: padding fails" u $
             Left "Base64-encoded bytestring required to be padded"
