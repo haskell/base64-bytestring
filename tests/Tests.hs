@@ -292,6 +292,9 @@ paddingCoherenceTests = testGroup "padded/unpadded coherence"
       , nopadtest "<<??>" "PDw_Pz4"
       , nopadtest "<<??>>" "PDw_Pz4-"
       ]
+    , testGroup "Padding validity"
+      [ interpaddingTest
+      ]
     ]
   where
     padtest s t = testCase (show $ if t == "" then "empty" else t) $ do
@@ -329,3 +332,11 @@ paddingCoherenceTests = testGroup "padded/unpadded coherence"
 
           assertEqual "Unpadded required: unpadding succeeds" v $
             Right s
+
+    interpaddingTest = testCase "Padding fails everywhere but end" $ do
+      Base64.decode "=eAoeAo=" @=? Left "invalid padding at offset: 0"
+      Base64.decode "e=AoeAo=" @=? Left "invalid padding at offset: 1"
+      Base64.decode "eA=oeAo=" @=? Left "invalid padding at offset: 2"
+      Base64.decode "eAo=eAo=" @=? Left "invalid padding at offset: 3"
+      Base64.decode "eAoe=Ao=" @=? Left "invalid padding at offset: 4"
+      Base64.decode "eAoeA=o=" @=? Left "invalid padding at offset: 5"
