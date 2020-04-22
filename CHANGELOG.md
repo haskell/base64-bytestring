@@ -1,5 +1,6 @@
-# 1.0.1.0 (WIP)
+# 1.0.1.0
 
+* The default behavior for Base64url `decode` is now to support arbitrary padding. If you need strict padded or unpadded decode semantics, use `decodePadded` or `decodeUnpadded`. 
 * Added strict unpadded and padded decode functions for Base64url ([#30](https://github.com/haskell/base64-bytestring/pull/30))
 * Added unpadded encode for Base64url
   ([#26](https://github.com/haskell/base64-bytestring/pull/26)).
