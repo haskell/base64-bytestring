@@ -220,12 +220,17 @@ decodeWithTable padding decodeFP bs@(PS !fp !o !l) = unsafePerformIO $
 
 decodeLoop
     :: Ptr Word8
+      -- ^ decoding table pointer
     -> Ptr Word8
+      -- ^ source pointer
     -> Ptr Word8
+      -- ^ destination pointer
     -> Ptr Word8
+      -- ^ source end pointer
     -> ForeignPtr Word8
+      -- ^ destination foreign pointer (used for finalizing string)
     -> IO (Either String ByteString)
-decodeLoop !dtable !sptr !dptr !end !dfp = go dptr sptr 0
+decodeLoop !dtable !sptr !dptr !end !dfp = go dptr sptr
   where
     err p = return . Left
       $ "invalid character at offset: "
@@ -241,22 +246,26 @@ decodeLoop !dtable !sptr !dptr !end !dfp = go dptr sptr 0
       !v <- peekByteOff dtable (fromIntegral i) :: IO Word8
       return (fromIntegral v)
 
-    go !dst !src !n
+    go !dst !src
       | plusPtr src 4 >= end = do
         !a <- look src
         !b <- look (src `plusPtr` 1)
         !c <- look (src `plusPtr` 2)
         !d <- look (src `plusPtr` 3)
-        finalChunk dst src n a b c d
+        finalChunk dst src a b c d
 
       | otherwise = do
         !a <- look src
         !b <- look (src `plusPtr` 1)
         !c <- look (src `plusPtr` 2)
         !d <- look (src `plusPtr` 3)
-        decodeChunk dst src n a b c d
+        decodeChunk dst src a b c d
 
-    decodeChunk !dst !src !n !a !b !c !d
+    -- | Decodes chunks of 4 bytes at a time, recombining into
+    -- 3 bytes. Note that in the inner loop stage, no padding
+    -- characters are admissible.
+    --
+    decodeChunk !dst !src !a !b !c !d
      | a == 0x63 = padErr src
      | b == 0x63 = padErr (plusPtr src 1)
      | c == 0x63 = padErr (plusPtr src 2)
@@ -274,11 +283,16 @@ decodeLoop !dtable !sptr !dptr !end !dfp = go dptr sptr 0
        poke8 dst (fromIntegral (unsafeShiftR w 16))
        poke8 (plusPtr dst 1) (fromIntegral (unsafeShiftR w 8))
        poke8 (plusPtr dst 2) (fromIntegral w)
-       go (plusPtr dst 3) (plusPtr src 4) (n + 3)
+       go (plusPtr dst 3) (plusPtr src 4)
 
-    finalChunk !dst !src !n a b c d
+    -- | Decode the final 4 bytes in the string, recombining into
+    -- 3 bytes. Note that in this stage, we can have padding chars
+    -- but only in the final 2 positions.
+    --
+    finalChunk !dst !src a b c d
       | a == 0x63 = padErr src
       | b == 0x63 = padErr (plusPtr src 1)
+      | c == 0x63 && d /= 0x63 = err (plusPtr src 2) -- make sure padding is coherent.
       | a == 0xff = err src
       | b == 0xff = err (plusPtr src 1)
       | c == 0xff = err (plusPtr src 2)
@@ -291,16 +305,17 @@ decodeLoop !dtable !sptr !dptr !end !dfp = go dptr sptr 0
 
         poke8 dst (fromIntegral (unsafeShiftR w 16))
 
-        if c == 0x63
-        then return $ Right (PS dfp 0 (n + 1))
+        if c == 0x63 && d == 0x63
+        then return $ Right $ PS dfp 0 (1 + (dst `minusPtr` dptr))
         else if d == 0x63
           then do
             poke8 (plusPtr dst 1) (fromIntegral (unsafeShiftR w 8))
-            return $ Right (PS dfp 0 (n + 2))
+            return $ Right $ PS dfp 0 (2 + (dst `minusPtr` dptr))
           else do
             poke8 (plusPtr dst 1) (fromIntegral (unsafeShiftR w 8))
             poke8 (plusPtr dst 2) (fromIntegral w)
-            return $ Right (PS dfp 0 (n + 3))
+            return $ Right $ PS dfp 0 (3 + (dst `minusPtr` dptr))
+
 
 -- | Decode a base64-encoded string.  This function is lenient in
 -- following the specification from
