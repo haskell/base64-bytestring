@@ -1,6 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DoAndIfThenElse #-}
-{-# LANGUAGE MultiWayIf #-}
 -- |
 -- Module      : Data.ByteString.Base64.Internal
 -- Copyright   : (c) 2010 Bryan O'Sullivan
@@ -243,65 +242,65 @@ decodeLoop !dtable !sptr !dptr !end !dfp = go dptr sptr 0
       return (fromIntegral v)
 
     go !dst !src !n
-      | plusPtr src 4 >= end = finish dst src n
+      | plusPtr src 4 >= end = do
+        !a <- look src
+        !b <- look (src `plusPtr` 1)
+        !c <- look (src `plusPtr` 2)
+        !d <- look (src `plusPtr` 3)
+        finalChunk dst src n a b c d
+
       | otherwise = do
         !a <- look src
         !b <- look (src `plusPtr` 1)
         !c <- look (src `plusPtr` 2)
         !d <- look (src `plusPtr` 3)
+        decodeChunk dst src n a b c d
 
-        if
-          | a == 0x63 -> padErr src
-          | b == 0x63 -> padErr (plusPtr src 1)
-          | c == 0x63 -> padErr (plusPtr src 2)
-          | d == 0x63 -> padErr (plusPtr src 3)
-          | a == 0xff -> err src
-          | b == 0xff -> err (plusPtr src 1)
-          | c == 0xff -> err (plusPtr src 2)
-          | d == 0xff -> err (plusPtr src 3)
-          | otherwise -> do
+    decodeChunk !dst !src !n !a !b !c !d
+     | a == 0x63 = padErr src
+     | b == 0x63 = padErr (plusPtr src 1)
+     | c == 0x63 = padErr (plusPtr src 2)
+     | d == 0x63 = padErr (plusPtr src 3)
+     | a == 0xff = err src
+     | b == 0xff = err (plusPtr src 1)
+     | c == 0xff = err (plusPtr src 2)
+     | d == 0xff = err (plusPtr src 3)
+     | otherwise = do
+       let !w = ((unsafeShiftL a 18)
+             .|. (unsafeShiftL b 12)
+             .|. (unsafeShiftL c 6)
+             .|. d) :: Word32
 
-            let !w = ((unsafeShiftL a 18)
-                  .|. (unsafeShiftL b 12)
-                  .|. (unsafeShiftL c 6)
-                  .|. d) :: Word32
+       poke8 dst (fromIntegral (unsafeShiftR w 16))
+       poke8 (plusPtr dst 1) (fromIntegral (unsafeShiftR w 8))
+       poke8 (plusPtr dst 2) (fromIntegral w)
+       go (plusPtr dst 3) (plusPtr src 4) (n + 3)
 
-            poke8 dst (fromIntegral (unsafeShiftR w 16))
+    finalChunk !dst !src !n a b c d
+      | a == 0x63 = padErr src
+      | b == 0x63 = padErr (plusPtr src 1)
+      | a == 0xff = err src
+      | b == 0xff = err (plusPtr src 1)
+      | c == 0xff = err (plusPtr src 2)
+      | d == 0xff = err (plusPtr src 3)
+      | otherwise = do
+        let !w = ((unsafeShiftL a 18)
+              .|. (unsafeShiftL b 12)
+              .|. (unsafeShiftL c 6)
+              .|. d) :: Word32
+
+        poke8 dst (fromIntegral (unsafeShiftR w 16))
+
+        if c == 0x63
+        then return $ Right (PS dfp 0 (n + 1))
+        else if d == 0x63
+          then do
+            poke8 (plusPtr dst 1) (fromIntegral (unsafeShiftR w 8))
+            return $ Right (PS dfp 0 (n + 2))
+          else do
             poke8 (plusPtr dst 1) (fromIntegral (unsafeShiftR w 8))
             poke8 (plusPtr dst 2) (fromIntegral w)
-            go (plusPtr dst 3) (plusPtr src 4) (n + 3)
-
-    finish !dst !src !n = do
-      !a <- look src
-      !b <- look (src `plusPtr` 1)
-      !c <- look (src `plusPtr` 2)
-      !d <- look (src `plusPtr` 3)
-
-      if
-        | a == 0x63 -> padErr src
-        | b == 0x63 -> padErr (plusPtr src 1)
-        | a == 0xff -> err src
-        | b == 0xff -> err (plusPtr src 1)
-        | c == 0xff -> err (plusPtr src 2)
-        | d == 0xff -> err (plusPtr src 3)
-        | otherwise -> do
-
-          let !w = ((unsafeShiftL a 18)
-                .|. (unsafeShiftL b 12)
-                .|. (unsafeShiftL c 6)
-                .|. d) :: Word32
-
-          poke8 dst (fromIntegral (unsafeShiftR w 16))
-
-          if
-            | c == 0x63 -> return $ Right (PS dfp 0 (n + 1))
-            | d == 0x63 -> do
-              poke8 (plusPtr dst 1) (fromIntegral (unsafeShiftR w 8))
-              return $ Right (PS dfp 0 (n + 2))
-            | otherwise -> do
-              poke8 (plusPtr dst 1) (fromIntegral (unsafeShiftR w 8))
-              poke8 (plusPtr dst 2) (fromIntegral w)
-              return $ Right (PS dfp 0 (n + 3))
+            return $ Right (PS dfp 0 (n + 3))
 
 -- | Decode a base64-encoded string.  This function is lenient in
 -- following the specification from
