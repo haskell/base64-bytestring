@@ -209,14 +209,8 @@ decodeWithTable padding decodeFP bs@(PS !fp !o !l) = unsafePerformIO $
       dfp <- mallocByteString dlen
       withForeignPtr decodeFP $ \ !decptr ->
         withForeignPtr sfp $ \sptr ->
-        withForeignPtr dfp $ \dptr -> do
-          let !end = sptr `plusPtr` (slen + soff)
-          decodeLoop
-            decptr
-            (plusPtr sptr soff)
-            dptr
-            end
-            dfp
+        withForeignPtr dfp $ \dptr ->
+          decodeLoop decptr (plusPtr sptr soff) dptr (sptr `plusPtr` (slen + soff)) dfp
 
 decodeLoop
     :: Ptr Word8
