@@ -19,6 +19,8 @@ module Data.ByteString.Base64.URL
       encode
     , encodeUnpadded
     , decode
+    , decodePadded
+    , decodeUnpadded
     , decodeLenient
     , joinWith
     ) where
@@ -42,7 +44,19 @@ encodeUnpadded = encodeWith Unpadded (mkEncodeTable alphabet)
 -- This function follows the specification in <http://tools.ietf.org/rfc/rfc4648 RFC 4648>
 -- and in <https://tools.ietf.org/html/rfc7049#section-2.4.4.2 RFC 7049 2.4>
 decode :: ByteString -> Either String ByteString
-decode = decodeWithTable Padded decodeFP
+decode = decodeWithTable Don'tCare decodeFP
+
+-- | Decode a padded base64url-encoded string, failing if input is improperly padded.
+-- This function follows the specification in <http://tools.ietf.org/rfc/rfc4648 RFC 4648>
+-- and in <https://tools.ietf.org/html/rfc7049#section-2.4.4.2 RFC 7049 2.4>
+decodePadded :: ByteString -> Either String ByteString
+decodePadded = decodeWithTable Padded decodeFP
+
+-- | Decode a unpadded base64url-encoded string, failing if input is padded.
+-- This function follows the specification in <http://tools.ietf.org/rfc/rfc4648 RFC 4648>
+-- and in <https://tools.ietf.org/html/rfc7049#section-2.4.4.2 RFC 7049 2.4>
+decodeUnpadded :: ByteString -> Either String ByteString
+decodeUnpadded = decodeWithTable Unpadded decodeFP
 
 -- | Decode a base64url-encoded string.  This function is lenient in
 -- following the specification from

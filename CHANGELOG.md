@@ -1,6 +1,7 @@
 # 1.0.1.0 (WIP)
 
-* Added unpadded encode/decode variants
+* Added strict unpadded and padded decode functions for Base64url ([#30](https://github.com/haskell/base64-bytestring/pull/30))
+* Added unpadded encode for Base64url
   ([#26](https://github.com/haskell/base64-bytestring/pull/26)).
 
 # 1.0.0.3

@@ -42,7 +42,7 @@ encode s = encodeWith Padded (mkEncodeTable alphabet) s
 -- standard that overrules RFC 4648 such as HTTP multipart mime bodies,
 -- consider using 'decodeLenient'.)
 decode :: ByteString -> Either String ByteString
-decode s = decodeWithTable Unpadded decodeFP s
+decode s = decodeWithTable Padded decodeFP s
 
 -- | Decode a base64-encoded string.  This function is lenient in
 -- following the specification from
