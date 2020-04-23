@@ -15,15 +15,13 @@
 -- Fast and efficient encoding and decoding of base64url-encoded strings.
 
 module Data.ByteString.Base64.URL
-    (
-      encode
-    , encodeUnpadded
-    , decode
-    , decodePadded
-    , decodeUnpadded
-    , decodeLenient
-    , joinWith
-    ) where
+  ( encode
+  , encodeUnpadded
+  , decode
+  , decodePadded
+  , decodeUnpadded
+  , decodeLenient
+  ) where
 
 import Data.ByteString.Base64.Internal
 import qualified Data.ByteString as B

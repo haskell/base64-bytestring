@@ -1,5 +1,6 @@
+cabal-version:       1.12
 name:                base64-bytestring
-version:             1.0.1.0
+version:             1.1.0.0
 synopsis:            Fast base64 encoding and decoding for ByteStrings
 description:         This package provides support for encoding and decoding binary data according to @base64@ (see also <https://tools.ietf.org/html/rfc4648 RFC 4648>) for strict and lazy ByteStrings.
 homepage:            https://github.com/haskell/base64-bytestring
@@ -13,7 +14,6 @@ maintainer:          Herbert Valerio Riedel <hvr@gnu.org>,
 copyright:           2010-2020 Bryan O'Sullivan et al.
 category:            Data
 build-type:          Simple
-cabal-version:       >=1.8
 tested-with:         GHC==8.10.1, GHC==8.8.3, GHC==8.6.5,
                      GHC==8.4.4,  GHC==8.2.2, GHC==8.0.2,
                      GHC==7.10.3, GHC==7.8.4, GHC==7.6.3,
@@ -41,6 +41,8 @@ library
 
   ghc-options: -Wall -funbox-strict-fields
 
+  default-language: Haskell2010
+
 test-suite tests
   type: exitcode-stdio-1.0
   hs-source-dirs: tests
@@ -61,6 +63,8 @@ test-suite tests
     test-framework-quickcheck2,
     test-framework-hunit
 
+  default-language: Haskell2010
+
 benchmark benchmarks
   type: exitcode-stdio-1.0
   hs-source-dirs: benchmarks
@@ -76,6 +80,8 @@ benchmark benchmarks
     deepseq,
     base64-bytestring,
     criterion
+
+  default-language: Haskell2010
 
 source-repository head
   type:     git

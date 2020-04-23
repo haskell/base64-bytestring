@@ -15,12 +15,10 @@
 -- Fast and efficient encoding and decoding of base64-encoded strings.
 
 module Data.ByteString.Base64
-    (
-      encode
-    , decode
-    , decodeLenient
-    , joinWith
-    ) where
+  ( encode
+  , decode
+  , decodeLenient
+  ) where
 
 import Data.ByteString.Base64.Internal
 import qualified Data.ByteString as B
