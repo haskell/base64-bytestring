@@ -32,7 +32,7 @@ import Data.Word (Word8, Word16, Word32)
 import Control.Exception (assert)
 import Foreign.ForeignPtr (ForeignPtr, withForeignPtr, castForeignPtr)
 import Foreign.Ptr (Ptr, castPtr, minusPtr, plusPtr)
-import Foreign.Storable (peek, peekElemOff, poke)
+import Foreign.Storable (peek, peekElemOff, poke, peekByteOff)
 import System.IO.Unsafe (unsafePerformIO)
 
 peek8 :: Ptr Word8 -> IO Word8
@@ -205,48 +205,111 @@ decodeWithTable padding decodeFP bs@(PS !fp !o !l) = unsafePerformIO $
       then err "Base64-encoded bytestring required to be unpadded"
       else io
 
-
     go (PS !sfp !soff !slen) = do
       dfp <- mallocByteString dlen
-      withForeignPtr decodeFP $ \ !decptr -> do
-        let finish dbytes = return . Right $! if dbytes > 0
-                                              then PS dfp 0 dbytes
-                                              else B.empty
-            bail = return . Left
-        withForeignPtr sfp $ \ !sptr -> do
-          let sEnd = sptr `plusPtr` (slen + soff)
-              look p = do
-                ix <- fromIntegral `fmap` peek8 p
-                v <- peek8 (decptr `plusPtr` ix)
-                return $! fromIntegral v :: IO Word32
-              fill !dp !sp !n
-                | sp >= sEnd = finish n
-                | otherwise = {-# SCC "decodeWithTable/fill" #-} do
-                a <- look sp
-                b <- look (sp `plusPtr` 1)
-                c <- look (sp `plusPtr` 2)
-                d <- look (sp `plusPtr` 3)
-                let w = (a `shiftL` 18) .|. (b `shiftL` 12) .|.
-                        (c `shiftL` 6) .|. d
-                if a == done || b == done
-                  then bail $ "invalid padding near offset " ++
-                       show (sp `minusPtr` sptr)
-                  else if a .|. b .|. c .|. d == x
-                  then bail $ "invalid base64 encoding near offset " ++
-                       show (sp `minusPtr` sptr)
-                  else do
-                    poke8 dp $ fromIntegral (w `shiftR` 16)
-                    if c == done
-                      then finish $ n + 1
-                      else do
-                        poke8 (dp `plusPtr` 1) $ fromIntegral (w `shiftR` 8)
-                        if d == done
-                          then finish $! n + 2
-                          else do
-                            poke8 (dp `plusPtr` 2) $ fromIntegral w
-                            fill (dp `plusPtr` 3) (sp `plusPtr` 4) (n+3)
-          withForeignPtr dfp $ \dptr ->
-            fill dptr (sptr `plusPtr` soff) 0
+      withForeignPtr decodeFP $ \ !decptr ->
+        withForeignPtr sfp $ \sptr ->
+        withForeignPtr dfp $ \dptr ->
+          decodeLoop decptr (plusPtr sptr soff) dptr (sptr `plusPtr` (slen + soff)) dfp
+
+decodeLoop
+    :: Ptr Word8
+      -- ^ decoding table pointer
+    -> Ptr Word8
+      -- ^ source pointer
+    -> Ptr Word8
+      -- ^ destination pointer
+    -> Ptr Word8
+      -- ^ source end pointer
+    -> ForeignPtr Word8
+      -- ^ destination foreign pointer (used for finalizing string)
+    -> IO (Either String ByteString)
+decodeLoop !dtable !sptr !dptr !end !dfp = go dptr sptr
+  where
+    err p = return . Left
+      $ "invalid character at offset: "
+      ++ show (p `minusPtr` sptr)
+
+    padErr p =  return . Left
+      $ "invalid padding at offset: "
+      ++ show (p `minusPtr` sptr)
+
+    look :: Ptr Word8 -> IO Word32
+    look !p = do
+      !i <- peekByteOff p 0 :: IO Word8
+      !v <- peekByteOff dtable (fromIntegral i) :: IO Word8
+      return (fromIntegral v)
+
+    go !dst !src
+      | plusPtr src 4 >= end = do
+        !a <- look src
+        !b <- look (src `plusPtr` 1)
+        !c <- look (src `plusPtr` 2)
+        !d <- look (src `plusPtr` 3)
+        finalChunk dst src a b c d
+
+      | otherwise = do
+        !a <- look src
+        !b <- look (src `plusPtr` 1)
+        !c <- look (src `plusPtr` 2)
+        !d <- look (src `plusPtr` 3)
+        decodeChunk dst src a b c d
+
+    -- | Decodes chunks of 4 bytes at a time, recombining into
+    -- 3 bytes. Note that in the inner loop stage, no padding
+    -- characters are admissible.
+    --
+    decodeChunk !dst !src !a !b !c !d
+     | a == 0x63 = padErr src
+     | b == 0x63 = padErr (plusPtr src 1)
+     | c == 0x63 = padErr (plusPtr src 2)
+     | d == 0x63 = padErr (plusPtr src 3)
+     | a == 0xff = err src
+     | b == 0xff = err (plusPtr src 1)
+     | c == 0xff = err (plusPtr src 2)
+     | d == 0xff = err (plusPtr src 3)
+     | otherwise = do
+       let !w = ((shiftL a 18)
+             .|. (shiftL b 12)
+             .|. (shiftL c 6)
+             .|. d) :: Word32
+
+       poke8 dst (fromIntegral (shiftR w 16))
+       poke8 (plusPtr dst 1) (fromIntegral (shiftR w 8))
+       poke8 (plusPtr dst 2) (fromIntegral w)
+       go (plusPtr dst 3) (plusPtr src 4)
+
+    -- | Decode the final 4 bytes in the string, recombining into
+    -- 3 bytes. Note that in this stage, we can have padding chars
+    -- but only in the final 2 positions.
+    --
+    finalChunk !dst !src a b c d
+      | a == 0x63 = padErr src
+      | b == 0x63 = padErr (plusPtr src 1)
+      | c == 0x63 && d /= 0x63 = err (plusPtr src 2) -- make sure padding is coherent.
+      | a == 0xff = err src
+      | b == 0xff = err (plusPtr src 1)
+      | c == 0xff = err (plusPtr src 2)
+      | d == 0xff = err (plusPtr src 3)
+      | otherwise = do
+        let !w = ((shiftL a 18)
+              .|. (shiftL b 12)
+              .|. (shiftL c 6)
+              .|. d) :: Word32
+
+        poke8 dst (fromIntegral (shiftR w 16))
+
+        if c == 0x63 && d == 0x63
+        then return $ Right $ PS dfp 0 (1 + (dst `minusPtr` dptr))
+        else if d == 0x63
+          then do
+            poke8 (plusPtr dst 1) (fromIntegral (shiftR w 8))
+            return $ Right $ PS dfp 0 (2 + (dst `minusPtr` dptr))
+          else do
+            poke8 (plusPtr dst 1) (fromIntegral (shiftR w 8))
+            poke8 (plusPtr dst 2) (fromIntegral w)
+            return $ Right $ PS dfp 0 (3 + (dst `minusPtr` dptr))
+
 
 -- | Decode a base64-encoded string.  This function is lenient in
 -- following the specification from
