@@ -9,7 +9,7 @@ import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.Framework.Providers.HUnit (testCase)
 
-import Test.QuickCheck (Arbitrary(..), Positive(..))
+import Test.QuickCheck (Arbitrary(..))
 
 import Control.Monad (liftM)
 import qualified Data.ByteString.Base64          as Base64
@@ -21,7 +21,6 @@ import qualified Data.ByteString as BS
 import Data.ByteString.Char8 ()
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy.Char8 as L
-import qualified Data.List.Split as List
 import Data.String
 import Test.HUnit hiding (Test)
 
@@ -115,13 +114,6 @@ instance Arbitrary ByteString where
 -- arbitrary content
 instance Arbitrary L.ByteString where
   arbitrary = liftM L.pack arbitrary
-
-chunksOf :: Int -> ByteString -> [ByteString]
-chunksOf k s
-  | B.null s = []
-  | otherwise =
-    let (h,t) = B.splitAt k s
-    in h : chunksOf k t
 
 -- | Decoding an encoded sintrg should produce the original string.
 genericDecodeEncode
