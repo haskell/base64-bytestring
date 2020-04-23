@@ -47,7 +47,7 @@ tests =
     , testsURLNopad $ Impl "Base64URLUnpadded" Base64URL.encodeUnpadded Base64URL.decodeUnpadded Base64URL.decodeLenient
     ]
   , testGroup "unit tests"
-    [ paddingCoherenceTests
+    [ base64UrlUnitTests
     ]
   ]
 
@@ -240,8 +240,8 @@ instance AllRepresentations L.ByteString where
                  , (prefix, suffix) <- tail splits
                  ]
 
-paddingCoherenceTests :: Test
-paddingCoherenceTests = testGroup "padded/unpadded coherence"
+base64UrlUnitTests :: Test
+base64UrlUnitTests = testGroup "Base64URL unit tests"
     [ testGroup "URL decodePadded"
       [ padtest "<" "PA=="
       , padtest "<<" "PDw="
@@ -250,6 +250,7 @@ paddingCoherenceTests = testGroup "padded/unpadded coherence"
       , padtest "<<??>" "PDw_Pz4="
       , padtest "<<??>>" "PDw_Pz4-"
       ]
+
     , testGroup "URL decodeUnpadded"
       [ nopadtest "<" "PA"
       , nopadtest "<<" "PDw"
@@ -258,8 +259,53 @@ paddingCoherenceTests = testGroup "padded/unpadded coherence"
       , nopadtest "<<??>" "PDw_Pz4"
       , nopadtest "<<??>>" "PDw_Pz4-"
       ]
+
     , testGroup "Padding validity"
-      [ interpaddingTest
+      [ testCase "Padding fails everywhere but end" $ do
+          Base64.decode "=eAoeAo=" @=? Left "invalid padding at offset: 0"
+          Base64.decode "e=AoeAo=" @=? Left "invalid padding at offset: 1"
+          Base64.decode "eA=oeAo=" @=? Left "invalid padding at offset: 2"
+          Base64.decode "eAo=eAo=" @=? Left "invalid padding at offset: 3"
+          Base64.decode "eAoe=Ao=" @=? Left "invalid padding at offset: 4"
+          Base64.decode "eAoeA=o=" @=? Left "invalid padding at offset: 5"
+      ]
+
+    , testGroup "Base64URL padding case unit tests"
+      [ testCase "stress arbitarily padded URL strings" $ do
+          Base64URL.decode "P" @=? Left "Base64-encoded bytestring has invalid size"
+          Base64URL.decode "PA" @=? Right "<"
+          Base64URL.decode "PDw" @=? Right "<<"
+          Base64URL.decode "PDw_" @=? Right "<<?"
+      , testCase "stress padded URL strings" $ do
+          Base64URL.decodePadded "=" @=? Left "Base64-encoded bytestring has invalid size"
+          Base64URL.decodePadded "PA==" @=? Right "<"
+          Base64URL.decodePadded "PDw=" @=? Right "<<"
+          Base64URL.decodePadded "PDw_" @=? Right "<<?"
+      , testCase "stress unpadded URL strings" $ do
+          Base64URL.decodeUnpadded "P" @=? Left "Base64-encoded bytestring has invalid size"
+          Base64URL.decodeUnpadded "PA" @=? Right "<"
+          Base64URL.decodeUnpadded "PDw" @=? Right "<<"
+          Base64URL.decodeUnpadded "PDw_" @=? Right "<<?"
+      ]
+
+    , testGroup "Base64Url branch coverage"
+      [ testCase "Invalid staggered padding" $ do
+        Base64URL.decode "=A==" @=? Left "invalid padding at offset: 0"
+        Base64URL.decode "P===" @=? Left "invalid padding at offset: 1"
+      , testCase "Invalid character coverage - final chunk" $ do
+        Base64URL.decode "%D==" @=? Left "invalid character at offset: 0"
+        Base64URL.decode "P%==" @=? Left "invalid character at offset: 1"
+        Base64URL.decode "PD%=" @=? Left "invalid character at offset: 2"
+        Base64URL.decode "PA=%" @=? Left "invalid character at offset: 3"
+        Base64URL.decode "PDw%" @=? Left "invalid character at offset: 3"
+      , testCase "Invalid character coverage - decode chunk" $ do
+        Base64URL.decode "%Dw_PDw_" @=? Left "invalid character at offset: 0"
+        Base64URL.decode "P%w_PDw_" @=? Left "invalid character at offset: 1"
+        Base64URL.decode "PD%_PDw_" @=? Left "invalid character at offset: 2"
+        Base64URL.decode "PDw%PDw_" @=? Left "invalid character at offset: 3"
+      , testCase "Invalid padding in body" $ do
+        Base64URL.decode "PD=_PDw_" @=? Left "invalid padding at offset: 2"
+        Base64URL.decode "PDw=PDw_" @=? Left "invalid padding at offset: 3"
       ]
     ]
   where
@@ -287,7 +333,6 @@ paddingCoherenceTests = testGroup "padded/unpadded coherence"
 
         if BS.length t `mod` 4 == 0
         then do
-          --
           assertEqual "String has no padding: decodes should coincide" u $
             Right s
           assertEqual "String has no padding: decodes should coincide" v $
@@ -298,11 +343,3 @@ paddingCoherenceTests = testGroup "padded/unpadded coherence"
 
           assertEqual "Unpadded required: unpadding succeeds" v $
             Right s
-
-    interpaddingTest = testCase "Padding fails everywhere but end" $ do
-      Base64.decode "=eAoeAo=" @=? Left "invalid padding at offset: 0"
-      Base64.decode "e=AoeAo=" @=? Left "invalid padding at offset: 1"
-      Base64.decode "eA=oeAo=" @=? Left "invalid padding at offset: 2"
-      Base64.decode "eAo=eAo=" @=? Left "invalid padding at offset: 3"
-      Base64.decode "eAoe=Ao=" @=? Left "invalid padding at offset: 4"
-      Base64.decode "eAoeA=o=" @=? Left "invalid padding at offset: 5"

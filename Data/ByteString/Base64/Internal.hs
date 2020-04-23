@@ -130,6 +130,7 @@ decodeWithTable _ _ (PS _ _ 0) = Right B.empty
 decodeWithTable padding decodeFP bs@(PS !fp !o !l) = unsafePerformIO $
    case padding of
      Padded
+       | r == 1 -> err "Base64-encoded bytestring has invalid size"
        | r /= 0 -> err "Base64-encoded bytestring required to be padded"
        | otherwise -> go bs
      Don'tCare
@@ -240,7 +241,7 @@ decodeLoop !dtable !sptr !dptr !end !dfp = go dptr sptr
     finalChunk !dst !src a b c d
       | a == 0x63 = padErr src
       | b == 0x63 = padErr (plusPtr src 1)
-      | c == 0x63 && d /= 0x63 = err (plusPtr src 2) -- make sure padding is coherent.
+      | c == 0x63 && d /= 0x63 = err (plusPtr src 3) -- make sure padding is coherent.
       | a == 0xff = err src
       | b == 0xff = err (plusPtr src 1)
       | c == 0xff = err (plusPtr src 2)
