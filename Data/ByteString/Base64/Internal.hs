@@ -12,24 +12,20 @@
 -- Fast and efficient encoding and decoding of base64-encoded strings.
 
 module Data.ByteString.Base64.Internal
-    (
-      encodeWith
-    , decodeWithTable
-    , decodeLenientWithTable
-    , mkEncodeTable
-    , joinWith
-    , done
-    , peek8, poke8, peek8_32
-    , reChunkIn
-    , Padding(..)
-    ) where
+  ( encodeWith
+  , decodeWithTable
+  , decodeLenientWithTable
+  , mkEncodeTable
+  , done
+  , peek8, poke8, peek8_32
+  , reChunkIn
+  , Padding(..)
+  ) where
 
 import Data.Bits ((.|.), (.&.), shiftL, shiftR)
 import qualified Data.ByteString as B
-import Data.ByteString.Internal (ByteString(..), mallocByteString, memcpy,
-                                 unsafeCreate)
+import Data.ByteString.Internal (ByteString(..), mallocByteString)
 import Data.Word (Word8, Word16, Word32)
-import Control.Exception (assert)
 import Foreign.ForeignPtr (ForeignPtr, withForeignPtr, castForeignPtr)
 import Foreign.Ptr (Ptr, castPtr, minusPtr, plusPtr)
 import Foreign.Storable (peek, peekElemOff, poke, peekByteOff)
@@ -123,48 +119,6 @@ mkEncodeTable alphabet@(PS afp _ _) =
   where
     ix    = fromIntegral . B.index alphabet
     table = B.pack $ concat $ [ [ix j, ix k] | j <- [0..63], k <- [0..63] ]
-
--- | Efficiently intersperse a terminator string into another at
--- regular intervals, and terminate the input with it.
---
--- Examples:
---
--- > joinWith "|" 2 "----" = "--|--|"
---
--- > joinWith "\r\n" 3 "foobarbaz" = "foo\r\nbar\r\nbaz\r\n"
--- > joinWith "x" 3 "fo" = "fox"
-joinWith :: ByteString  -- ^ String to intersperse and end with
-         -> Int         -- ^ Interval at which to intersperse, in bytes
-         -> ByteString  -- ^ String to transform
-         -> ByteString
-joinWith brk@(PS bfp boff blen) every' bs@(PS sfp soff slen)
-    | every' <= 0 = error "invalid interval"
-    | blen <= 0  = bs
-    | B.null bs = brk
-    | otherwise =
-  unsafeCreate dlen $ \dptr ->
-    withForeignPtr bfp $ \bptr -> do
-      withForeignPtr sfp $ \sptr -> do
-          let bp = bptr `plusPtr` boff
-              sp0 = sptr `plusPtr` soff
-              sEnd = sp0 `plusPtr` slen
-              dLast = dptr `plusPtr` dlen
-              loop !dp !sp !written
-                  | dp == dLast = return ()
-                  | otherwise = do
-                let chunkSize = min every (sEnd `minusPtr` sp)
-                memcpy dp sp (fromIntegral chunkSize)
-                let dp' = dp `plusPtr` chunkSize
-                memcpy dp' bp (fromIntegral blen)
-                let written' = written + chunkSize + blen
-                assert (written' <= dlen) $
-                  loop (dp' `plusPtr` blen) (sp `plusPtr` chunkSize) written'
-          loop dptr sp0 0
-  where dlast = slen + blen * numBreaks
-        every = min slen every'
-        dlen | rmndr > 0   = dlast + blen
-             | otherwise   = dlast
-        (numBreaks, rmndr) = slen `divMod` every
 
 -- | Decode a base64-encoded string.  This function strictly follows
 -- the specification in

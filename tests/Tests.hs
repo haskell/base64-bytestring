@@ -39,12 +39,7 @@ data Impl bs = Impl
 
 tests :: [Test]
 tests =
-  [ testGroup "joinWith"
-    [ testProperty "all_endsWith" joinWith_all_endsWith
-    , testProperty "endsWith" joinWith_endsWith
-    , testProperty "pureImpl" joinWith_pureImpl
-    ]
-  , testGroup "property tests"
+  [ testGroup "property tests"
     [ testsRegular $ Impl "Base64" Base64.encode Base64.decode Base64.decodeLenient
     , testsRegular $ Impl "LBase64" LBase64.encode LBase64.decode LBase64.decodeLenient
     , testsURL $ Impl "Base64URL" Base64URL.encode Base64URL.decode Base64URL.decodeLenient
@@ -121,33 +116,12 @@ instance Arbitrary ByteString where
 instance Arbitrary L.ByteString where
   arbitrary = liftM L.pack arbitrary
 
-joinWith_pureImpl :: ByteString -> Positive Int -> ByteString -> Bool
-joinWith_pureImpl brk (Positive int) str = pureImpl == Base64.joinWith brk int str
-  where
-    pureImpl
-      | B.null brk = str
-      | B.null str = brk
-      | otherwise = B.pack . concat $
-        [ s ++ (B.unpack brk)
-        | s <- List.chunksOf int (B.unpack str)
-        ]
-
-joinWith_endsWith :: ByteString -> Positive Int -> ByteString -> Bool
-joinWith_endsWith brk (Positive int) str =
-  brk `B.isSuffixOf` Base64.joinWith brk int str
-
 chunksOf :: Int -> ByteString -> [ByteString]
 chunksOf k s
   | B.null s = []
   | otherwise =
     let (h,t) = B.splitAt k s
     in h : chunksOf k t
-
-joinWith_all_endsWith :: ByteString -> Positive Int -> ByteString -> Bool
-joinWith_all_endsWith brk (Positive int) str =
-    all (brk `B.isSuffixOf`) . chunksOf k . Base64.joinWith brk int $ str
-  where
-    k = B.length brk + min int (B.length str)
 
 -- | Decoding an encoded sintrg should produce the original string.
 genericDecodeEncode
