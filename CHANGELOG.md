@@ -1,5 +1,6 @@
 # 1.1.0.0
 
+* `joinWith` has been removed ([#32](https://github.com/haskell/base64-bytestring/pull/32))
 * Bugfix: `decode` formerly allowed for padding chars to be interspersed in a valid base64-encoded string. This is now not the case, and it is fully spec-compliant as of [#31](https://github.com/haskell/base64-bytestring/pull/31)
 * The default behavior for Base64url `decode` is now to support arbitrary padding. If you need strict padded or unpadded decode semantics, use `decodePadded` or `decodeUnpadded`.
 * Added strict unpadded and padded decode functions for Base64url ([#30](https://github.com/haskell/base64-bytestring/pull/30))
