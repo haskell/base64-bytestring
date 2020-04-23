@@ -24,7 +24,7 @@ module Data.ByteString.Base64.Internal
     , Padding(..)
     ) where
 
-import Data.Bits ((.|.), (.&.), shiftL, shiftR, unsafeShiftL, unsafeShiftR)
+import Data.Bits ((.|.), (.&.), shiftL, shiftR)
 import qualified Data.ByteString as B
 import Data.ByteString.Internal (ByteString(..), mallocByteString, memcpy,
                                  unsafeCreate)
@@ -269,13 +269,13 @@ decodeLoop !dtable !sptr !dptr !end !dfp = go dptr sptr
      | c == 0xff = err (plusPtr src 2)
      | d == 0xff = err (plusPtr src 3)
      | otherwise = do
-       let !w = ((unsafeShiftL a 18)
-             .|. (unsafeShiftL b 12)
-             .|. (unsafeShiftL c 6)
+       let !w = ((shiftL a 18)
+             .|. (shiftL b 12)
+             .|. (shiftL c 6)
              .|. d) :: Word32
 
-       poke8 dst (fromIntegral (unsafeShiftR w 16))
-       poke8 (plusPtr dst 1) (fromIntegral (unsafeShiftR w 8))
+       poke8 dst (fromIntegral (shiftR w 16))
+       poke8 (plusPtr dst 1) (fromIntegral (shiftR w 8))
        poke8 (plusPtr dst 2) (fromIntegral w)
        go (plusPtr dst 3) (plusPtr src 4)
 
@@ -292,21 +292,21 @@ decodeLoop !dtable !sptr !dptr !end !dfp = go dptr sptr
       | c == 0xff = err (plusPtr src 2)
       | d == 0xff = err (plusPtr src 3)
       | otherwise = do
-        let !w = ((unsafeShiftL a 18)
-              .|. (unsafeShiftL b 12)
-              .|. (unsafeShiftL c 6)
+        let !w = ((shiftL a 18)
+              .|. (shiftL b 12)
+              .|. (shiftL c 6)
               .|. d) :: Word32
 
-        poke8 dst (fromIntegral (unsafeShiftR w 16))
+        poke8 dst (fromIntegral (shiftR w 16))
 
         if c == 0x63 && d == 0x63
         then return $ Right $ PS dfp 0 (1 + (dst `minusPtr` dptr))
         else if d == 0x63
           then do
-            poke8 (plusPtr dst 1) (fromIntegral (unsafeShiftR w 8))
+            poke8 (plusPtr dst 1) (fromIntegral (shiftR w 8))
             return $ Right $ PS dfp 0 (2 + (dst `minusPtr` dptr))
           else do
-            poke8 (plusPtr dst 1) (fromIntegral (unsafeShiftR w 8))
+            poke8 (plusPtr dst 1) (fromIntegral (shiftR w 8))
             poke8 (plusPtr dst 2) (fromIntegral w)
             return $ Right $ PS dfp 0 (3 + (dst `minusPtr` dptr))
 
