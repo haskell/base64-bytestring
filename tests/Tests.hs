@@ -36,23 +36,51 @@ data Impl bs = Impl
   , _lenient :: bs -> bs
   }
 
+data UrlImpl bs = UrlImpl
+  { _labelUrl :: String
+  , _encodeUrl :: bs -> bs
+  , _decodeUrl :: bs -> Either String bs
+  , _encodeUrlNopad :: bs -> bs
+  , _decodeUrlNopad :: bs -> Either String bs
+  , _decodeUrlPad :: bs -> Either String bs
+  , _lenientUrl :: bs -> bs
+  }
+
 tests :: [Test]
 tests =
   [ testGroup "property tests"
-    [ testsRegular $ Impl "Base64" Base64.encode Base64.decode Base64.decodeLenient
-    , testsRegular $ Impl "LBase64" LBase64.encode LBase64.decode LBase64.decodeLenient
-    , testsURL $ Impl "Base64URL" Base64URL.encode Base64URL.decode Base64URL.decodeLenient
-    , testsURL $ Impl "Base64URLPadded" Base64URL.encode Base64URL.decodePadded Base64URL.decodeLenient
-    , testsURLNopad $ Impl "Base64URLUnpadded" Base64URL.encodeUnpadded Base64URL.decodeUnpadded Base64URL.decodeLenient
-    , testsURL $ Impl "LBase64URL" LBase64URL.encode LBase64URL.decode LBase64URL.decodeLenient
-    , testsURL $ Impl "LBase64URLPadded" LBase64URL.encode LBase64URL.decodePadded LBase64URL.decodeLenient
-    , testsURLNopad $ Impl "LBase64URLUnpadded" LBase64URL.encodeUnpadded LBase64URL.decodeUnpadded LBase64URL.decodeLenient
+    [ testsRegular b64impl
+    , testsRegular lb64impl
+    , testsURL b64uimpl
+    , testsURL lb64uimpl
     ]
   , testGroup "unit tests"
     [ base64UrlUnitTests
     , lazyBase64UrlUnitTests
     ]
   ]
+  where
+    b64impl = Impl "Base64" Base64.encode Base64.decode Base64.decodeLenient
+    lb64impl = Impl "LBase64" LBase64.encode LBase64.decode LBase64.decodeLenient
+
+    b64uimpl = UrlImpl
+      "Base64URL"
+      Base64URL.encode
+      Base64URL.decode
+      Base64URL.encodeUnpadded
+      Base64URL.decodeUnpadded
+      Base64URL.decodePadded
+      Base64URL.decodeLenient
+
+    lb64uimpl = UrlImpl
+      "LBase64URL"
+      LBase64URL.encode
+      LBase64URL.decode
+      LBase64URL.encodeUnpadded
+      LBase64URL.decodeUnpadded
+      LBase64URL.decodePadded
+      LBase64URL.decodeLenient
+
 
 testsRegular
   :: ( IsString bs
@@ -72,20 +100,17 @@ testsURL
      , Eq bs
      , Arbitrary bs
      )
-  => Impl bs
+  => UrlImpl bs
   -> Test
-testsURL = testsWith base64url_testData
-
-testsURLNopad
-  :: ( IsString bs
-     , AllRepresentations bs
-     , Show bs
-     , Eq bs
-     , Arbitrary bs
-     )
-  => Impl bs
-  -> Test
-testsURLNopad = testsWith base64url_testData_nopad
+testsURL (UrlImpl l e d eu du dp dl) = testGroup l
+  [ testsWith base64url_testData (Impl "Arbitrary Padding" e d dl)
+  , testsWith base64url_testData (Impl "Required Padding" e dp dl)
+  , testsWith base64url_testData_nopad (Impl "No padding" eu du dl)
+  , testProperty "prop_url_pad_roundtrip" $ \bs -> Right bs == dp (e bs)
+  , testProperty "prop_url_nopad_roundtrip" $ \bs -> Right bs == du (eu bs)
+  , testProperty "prop_url_decode_invariant" $ \bs ->
+      ((du (eu bs)) == (d (e bs))) || ((dp (e bs)) == d (e bs))
+  ]
 
 testsWith
   :: ( IsString bs
@@ -148,6 +173,7 @@ string_tests testData (Impl _ encode decode decodeLenient) =
     base64_string_test encode decode testData ++ base64_string_test encode decodeLenient' testData
   where
     decodeLenient' = liftM Right decodeLenient
+
 
 base64_testData :: IsString bs => [(bs, bs)]
 base64_testData = [("",                "")

@@ -121,51 +121,46 @@ mkEncodeTable alphabet@(PS afp _ _) =
     table = B.pack $ concat $ [ [ix j, ix k] | j <- [0..63], k <- [0..63] ]
 
 -- | Decode a base64-encoded string.  This function strictly follows
--- the specification in
--- <http://tools.ietf.org/rfc/rfc4648 RFC 4648>.
+-- the specification in <http://tools.ietf.org/rfc/rfc4648 RFC 4648>.
+--
 -- This function takes the decoding table (for @base64@ or @base64url@) as
--- the first paramert.
+-- the first parameter.
+--
+-- For validation of padding properties, see note: $Validation
+--
 decodeWithTable :: Padding -> ForeignPtr Word8 -> ByteString -> Either String ByteString
 decodeWithTable _ _ (PS _ _ 0) = Right B.empty
-decodeWithTable padding decodeFP bs@(PS !fp !o !l) = unsafePerformIO $
+decodeWithTable padding decodeFP bs =
    case padding of
      Padded
-       | r == 1 -> err "Base64-encoded bytestring has invalid size"
-       | r /= 0 -> err "Base64-encoded bytestring required to be padded"
-       | otherwise -> go bs
+       | r == 1 -> Left "Base64-encoded bytestring has invalid size"
+       | r /= 0 -> Left "Base64-encoded bytestring required to be padded"
+       | otherwise -> unsafePerformIO $ go bs
      Don'tCare
-       | r == 0 -> go bs
-       | r == 2 -> go (B.append bs (B.replicate 2 0x3d))
-       | r == 3 -> go (B.append bs (B.replicate 1 0x3d))
-       | otherwise -> err "Base64-encoded bytestring has invalid size"
+       | r == 0 -> unsafePerformIO $ go bs
+       | r == 2 -> unsafePerformIO $ go (B.append bs (B.replicate 2 0x3d))
+       | r == 3 -> validateLastPad bs invalidPad $ go (B.append bs (B.replicate 1 0x3d))
+       | otherwise -> Left "Base64-encoded bytestring has invalid size"
      Unpadded
-       | r == 0 -> validateUnpadded (go bs)
-       | r == 2 -> validateUnpadded (go (B.append bs (B.replicate 2 0x3d)))
-       | r == 3 -> validateUnpadded (go (B.append bs (B.replicate 1 0x3d)))
-       | otherwise -> err "Base64-encoded bytestring has invalid size"
+       | r == 0 -> validateLastPad bs noPad $ go bs
+       | r == 2 -> validateLastPad bs noPad $ go (B.append bs (B.replicate 2 0x3d))
+       | r == 3 -> validateLastPad bs noPad $ go (B.append bs (B.replicate 1 0x3d))
+       | otherwise -> Left "Base64-encoded bytestring has invalid size"
   where
-    err = return . Left
+    (!q, !r) = (B.length bs) `divMod` 4
 
-    (q, r) = (B.length bs) `divMod` 4
+    noPad = "Base64-encoded bytestring required to be unpadded"
+    invalidPad = "Base64-encoded bytestring has invalid padding"
 
-    dlen = q * 3
-
-    validateUnpadded io = withForeignPtr fp $ \p -> do
-      let !end = l + o
-      a <- peek (plusPtr p (end - 1))
-      b <- peek (plusPtr p (end - 2))
-
-      let !pad = 0x3d :: Word8
-      if a == pad || b == pad
-      then err "Base64-encoded bytestring required to be unpadded"
-      else io
+    !dlen = q * 3
 
     go (PS !sfp !soff !slen) = do
       dfp <- mallocByteString dlen
       withForeignPtr decodeFP $ \ !decptr ->
         withForeignPtr sfp $ \sptr ->
         withForeignPtr dfp $ \dptr ->
-          decodeLoop decptr (plusPtr sptr soff) dptr (sptr `plusPtr` (slen + soff)) dfp
+          decodeLoop decptr (plusPtr sptr soff) dptr
+            (sptr `plusPtr` (slen + soff)) dfp
 
 decodeLoop
     :: Ptr Word8
@@ -351,3 +346,40 @@ reChunkIn !n = go
                                      in acc' : go zs'
                                 else -- suffix must be null
                                     fixup acc' zs
+
+-- $Validation
+--
+-- This function checks that the last char of a bytestring is '='
+-- and, if true, fails with a message or completes some io action.
+--
+-- This is necessary to check when decoding permissively (i.e. filling in padding chars).
+-- Consider the following 4 cases of a string of length l:
+--
+-- l = 0 mod 4: No pad chars are added, since the input is assumed to be good.
+-- l = 1 mod 4: Never an admissible length in base64
+-- l = 2 mod 4: 2 padding chars are added. If padding chars are present in the last 4 chars of the string,
+-- they will fail to decode as final quanta.
+-- l = 3 mod 4: 1 padding char is added. In this case  a string is of the form <body> + <padchar>. If adding the
+-- pad char "completes" the string so that it is `l = 0 mod 4`, then this may possibly form corrupted data.
+-- This case is degenerate and should be disallowed.
+--
+-- Hence, permissive decodes should only fill in padding chars when it makes sense to add them. That is,
+-- if an input is degenerate, it should never succeed when we add padding chars. We need the following invariant to hold:
+--
+-- @
+--   B64U.decodeUnpadded <|> B64U.decodePadded ~ B64U.decodePadded
+-- @
+--
+-- This means the only char we need to check is the last one, and only to disallow `l = 3 mod 4`.
+--
+validateLastPad
+    :: ByteString
+      -- ^ input to validate
+    -> String
+      -- ^ error msg
+    -> IO (Either String ByteString)
+    -> Either String ByteString
+validateLastPad bs err io
+    | B.last bs == 0x3d = Left err
+    | otherwise = unsafePerformIO io
+{-# INLINE validateLastPad #-}
