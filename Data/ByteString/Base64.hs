@@ -13,7 +13,8 @@
 -- Portability : GHC
 --
 -- Fast and efficient encoding and decoding of base64-encoded strings.
-
+--
+-- @since 0.1.0.0
 module Data.ByteString.Base64
   ( encode
   , decode

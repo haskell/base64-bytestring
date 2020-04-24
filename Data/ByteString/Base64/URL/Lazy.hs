@@ -14,7 +14,8 @@
 --
 -- Fast and efficient encoding and decoding of base64-encoded
 -- lazy bytestrings.
-
+--
+-- @since 1.0.0.0
 module Data.ByteString.Base64.URL.Lazy
     (
       encode
@@ -38,6 +39,8 @@ encode :: L.ByteString -> L.ByteString
 encode = L.fromChunks . map B64.encode . reChunkIn 3 . L.toChunks
 
 -- | Encode a string into unpadded base64url form.
+--
+-- @since 1.1.0.0
 encodeUnpadded :: L.ByteString -> L.ByteString
 encodeUnpadded = L.fromChunks
     . map B64.encodeUnpadded
@@ -61,6 +64,8 @@ decode b = -- Returning an Either type means that the entire result will
 -- | Decode a unpadded base64url-encoded string, failing if input is padded.
 -- This function follows the specification in <http://tools.ietf.org/rfc/rfc4648 RFC 4648>
 -- and in <https://tools.ietf.org/html/rfc7049#section-2.4.4.2 RFC 7049 2.4>
+--
+-- @since 1.1.0.0
 decodeUnpadded :: L.ByteString -> Either String L.ByteString
 decodeUnpadded bs = case B64.decodeUnpadded $ S.concat $ L.toChunks bs of
   Right b -> Right $ L.fromChunks [b]
@@ -69,6 +74,8 @@ decodeUnpadded bs = case B64.decodeUnpadded $ S.concat $ L.toChunks bs of
 -- | Decode a padded base64url-encoded string, failing if input is improperly padded.
 -- This function follows the specification in <http://tools.ietf.org/rfc/rfc4648 RFC 4648>
 -- and in <https://tools.ietf.org/html/rfc7049#section-2.4.4.2 RFC 7049 2.4>
+--
+-- @since 1.1.0.0
 decodePadded :: L.ByteString -> Either String L.ByteString
 decodePadded bs = case B64.decodePadded $ S.concat $ L.toChunks bs of
   Right b -> Right $ L.fromChunks [b]

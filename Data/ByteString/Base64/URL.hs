@@ -13,7 +13,8 @@
 -- Portability : GHC
 --
 -- Fast and efficient encoding and decoding of base64url-encoded strings.
-
+--
+-- @since 0.1.1.0
 module Data.ByteString.Base64.URL
   ( encode
   , encodeUnpadded
@@ -35,6 +36,8 @@ encode :: ByteString -> ByteString
 encode = encodeWith Padded (mkEncodeTable alphabet)
 
 -- | Encode a string into unpadded base64url form.
+--
+-- @since 1.1.0.0
 encodeUnpadded :: ByteString -> ByteString
 encodeUnpadded = encodeWith Unpadded (mkEncodeTable alphabet)
 
@@ -47,12 +50,16 @@ decode = decodeWithTable Don'tCare decodeFP
 -- | Decode a padded base64url-encoded string, failing if input is improperly padded.
 -- This function follows the specification in <http://tools.ietf.org/rfc/rfc4648 RFC 4648>
 -- and in <https://tools.ietf.org/html/rfc7049#section-2.4.4.2 RFC 7049 2.4>
+--
+-- @since 1.1.0.0
 decodePadded :: ByteString -> Either String ByteString
 decodePadded = decodeWithTable Padded decodeFP
 
 -- | Decode a unpadded base64url-encoded string, failing if input is padded.
 -- This function follows the specification in <http://tools.ietf.org/rfc/rfc4648 RFC 4648>
 -- and in <https://tools.ietf.org/html/rfc7049#section-2.4.4.2 RFC 7049 2.4>
+--
+-- @since 1.1.0.0
 decodeUnpadded :: ByteString -> Either String ByteString
 decodeUnpadded = decodeWithTable Unpadded decodeFP
 

@@ -14,7 +14,8 @@
 --
 -- Fast and efficient encoding and decoding of base64-encoded
 -- lazy bytestrings.
-
+--
+-- @since 1.0.0.0
 module Data.ByteString.Base64.Lazy
     (
       encode
