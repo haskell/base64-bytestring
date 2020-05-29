@@ -144,7 +144,7 @@ decodeWithTable padding decodeFP bs =
      Unpadded
        | r == 0 -> validateLastPad bs noPad $ go bs
        | r == 2 -> validateLastPad bs noPad $ go (B.append bs (B.replicate 2 0x3d))
-       | r == 3 -> validateLastPad bs invalidPad $ go (B.append bs (B.replicate 1 0x3d))
+       | r == 3 -> validateLastPad bs noPad $ go (B.append bs (B.replicate 1 0x3d))
        | otherwise -> Left "Base64-encoded bytestring has invalid size"
   where
     (!q, !r) = (B.length bs) `divMod` 4
