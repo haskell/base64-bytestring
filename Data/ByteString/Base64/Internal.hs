@@ -133,9 +133,10 @@ decodeWithTable _ _ (PS _ _ 0) = Right B.empty
 decodeWithTable padding decodeFP bs =
    case padding of
      Padded
-       | r == 1 -> Left "Base64-encoded bytestring has invalid size"
-       | r /= 0 -> Left "Base64-encoded bytestring required to be padded"
-       | otherwise -> unsafePerformIO $ go bs
+       | r == 0 -> unsafePerformIO $ go bs
+       | r == 2 -> Left "Base64-encoded bytestring required to be padded"
+       | r == 3 -> Left "Base64-encoded bytestring has invalid padding"
+       | otherwise -> Left "Base64-encoded bytestring has invalid size"
      Don'tCare
        | r == 0 -> unsafePerformIO $ go bs
        | r == 2 -> unsafePerformIO $ go (B.append bs (B.replicate 2 0x3d))
