@@ -367,13 +367,8 @@ base64UrlUnitTests = testGroup "Base64URL unit tests"
           assertEqual "String has no padding: decodes should coincide" v $
             Right s
         else do
-          if BS.length t `mod` 4 == 3
-          then do
-            assertEqual "Unpadded required: padding fails" u $
-              Left "Base64-encoded bytestring has invalid padding"
-          else do
-            assertEqual "Unpadded required: padding fails" u $
-              Left "Base64-encoded bytestring required to be padded"
+          assertEqual "Unpadded required: padding fails" u $
+            Left "Base64-encoded bytestring is unpadded or has invalid padding"
 
           assertEqual "Unpadded required: unpadding succeeds" v $
             Right s
@@ -476,13 +471,8 @@ lazyBase64UrlUnitTests = testGroup "LBase64URL unit tests"
           assertEqual "String has no padding: decodes should coincide" v $
             Right s
         else do
-          if L.length t `mod` 4 == 3
-          then do
-            assertEqual "Unpadded required: padding fails" u $
-              Left "Base64-encoded bytestring has invalid padding"
-          else do
-            assertEqual "Unpadded required: padding fails" u $
-              Left "Base64-encoded bytestring required to be padded"
+          assertEqual "Unpadded required: padding fails" u $
+            Left "Base64-encoded bytestring is unpadded or has invalid padding"
 
           assertEqual "Unpadded required: unpadding succeeds" v $
             Right s
