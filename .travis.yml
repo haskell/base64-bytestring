@@ -2,9 +2,13 @@
 #
 #   haskell-ci 'base64-bytestring.cabal'
 #
+# To regenerate the script (for example after adjusting tested-with) run
+#
+#   haskell-ci regenerate
+#
 # For more information, see https://github.com/haskell-CI/haskell-ci
 #
-# version: 0.9.20200406
+# version: 0.10.1
 #
 version: ~> 1.0
 language: c
@@ -162,5 +166,5 @@ script:
   - rm -f cabal.project.local
   - ${CABAL} v2-build $WITHCOMPILER --disable-tests --disable-benchmarks all
 
-# REGENDATA ("0.9.20200406",["base64-bytestring.cabal"])
+# REGENDATA ("0.10.1",["base64-bytestring.cabal"])
 # EOF
