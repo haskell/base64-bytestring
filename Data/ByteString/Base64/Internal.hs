@@ -28,7 +28,7 @@ import Data.ByteString.Internal (ByteString(..), mallocByteString)
 import Data.Word (Word8, Word16, Word32)
 import Foreign.ForeignPtr (ForeignPtr, withForeignPtr, castForeignPtr)
 import Foreign.Ptr (Ptr, castPtr, minusPtr, plusPtr)
-import Foreign.Storable (peek, peekElemOff, poke, peekByteOff)
+import Foreign.Storable (peek, peekElemOff, poke)
 import System.IO.Unsafe (unsafePerformIO)
 
 peek8 :: Ptr Word8 -> IO Word8
@@ -180,14 +180,18 @@ decodeLoop !dtable !sptr !dptr !end !dfp = go dptr sptr
       $ "invalid character at offset: "
       ++ show (p `minusPtr` sptr)
 
-    padErr p =  return . Left
+    padErr p = return . Left
       $ "invalid padding at offset: "
+      ++ show (p `minusPtr` sptr)
+
+    canonErr p = return . Left
+      $ "non-canonical encoding detected at offset: "
       ++ show (p `minusPtr` sptr)
 
     look :: Ptr Word8 -> IO Word32
     look !p = do
-      !i <- peekByteOff p 0 :: IO Word8
-      !v <- peekByteOff dtable (fromIntegral i) :: IO Word8
+      !i <- peek p
+      !v <- peekElemOff dtable (fromIntegral i)
       return (fromIntegral v)
 
     go !dst !src
@@ -250,11 +254,17 @@ decodeLoop !dtable !sptr !dptr !end !dfp = go dptr sptr
         poke8 dst (fromIntegral (shiftR w 16))
 
         if c == 0x63 && d == 0x63
-        then return $ Right $ PS dfp 0 (1 + (dst `minusPtr` dptr))
+        then
+          if sanityCheckPos b mask_4bits
+          then return $ Right $ PS dfp 0 (1 + (dst `minusPtr` dptr))
+          else canonErr (plusPtr src 1)
         else if d == 0x63
-          then do
-            poke8 (plusPtr dst 1) (fromIntegral (shiftR w 8))
-            return $ Right $ PS dfp 0 (2 + (dst `minusPtr` dptr))
+          then
+            if sanityCheckPos c mask_2bits
+            then do
+              poke8 (plusPtr dst 1) (fromIntegral (shiftR w 8))
+              return $ Right $ PS dfp 0 (2 + (dst `minusPtr` dptr))
+            else canonErr (plusPtr src 2)
           else do
             poke8 (plusPtr dst 1) (fromIntegral (shiftR w 8))
             poke8 (plusPtr dst 2) (fromIntegral w)
@@ -383,3 +393,22 @@ validateLastPad bs err io
     | B.last bs == 0x3d = Left err
     | otherwise = unsafePerformIO io
 {-# INLINE validateLastPad #-}
+
+-- | Sanity check an index against a bitmask to make sure
+-- it's coherent. If pos & mask == 0, we're good. If not, we should fail.
+--
+sanityCheckPos :: Word32 -> Word8 -> Bool
+sanityCheckPos pos mask = ((fromIntegral pos) .&. mask) == 0
+{-# INLINE sanityCheckPos #-}
+
+-- | Mask 2 bits
+--
+mask_2bits :: Word8
+mask_2bits = 3  -- (1 << 2) - 1
+{-# NOINLINE mask_2bits #-}
+
+-- | Mask 4 bits
+--
+mask_4bits :: Word8
+mask_4bits = 15 -- (1 << 4) - 1
+{-# NOINLINE mask_4bits #-}

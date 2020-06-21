@@ -299,6 +299,29 @@ base64UrlUnitTests = testGroup "Base64URL unit tests"
           Base64.decode "eAoeA=o=" @=? Left "invalid padding at offset: 5"
       ]
 
+    , testGroup "Canonicity requirement"
+      [ -- "d"
+        testCase "Equivalent non-canonical encodings fail and canonical encodings succeed" $ do
+        Base64.decode "ZE==" @=? Left "non-canonical encoding detected at offset: 1"
+        Base64.decode "ZK==" @=? Left "non-canonical encoding detected at offset: 1"
+        Base64.decode "ZA==" @=? Right "d"
+
+        -- "f`"
+        Base64.decode "ZmC=" @=? Left "non-canonical encoding detected at offset: 2"
+        Base64.decode "ZmD=" @=? Left "non-canonical encoding detected at offset: 2"
+        Base64.decode "ZmA=" @=? Right "f`"
+
+        -- "foo`"
+        Base64.decode "Zm9vYE==" @=? Left "non-canonical encoding detected at offset: 5"
+        Base64.decode "Zm9vYK==" @=? Left "non-canonical encoding detected at offset: 5"
+        Base64.decode "Zm9vYA==" @=? Right "foo`"
+
+        -- "foob`"
+        Base64.decode "Zm9vYmC=" @=? Left "non-canonical encoding detected at offset: 6"
+        Base64.decode "Zm9vYmD=" @=? Left "non-canonical encoding detected at offset: 6"
+        Base64.decode "Zm9vYmA=" @=? Right "foob`"
+      ]
+
     , testGroup "Base64URL padding case unit tests"
       [ testCase "stress arbitarily padded URL strings" $ do
           Base64URL.decode "P" @=? Left "Base64-encoded bytestring has invalid size"
