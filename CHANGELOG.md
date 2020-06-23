@@ -1,6 +1,6 @@
 See also http://pvp.haskell.org/faq
 
-# 1.1.1.0
+# 1.2.0.0
 
 * Security fix: reject non-canonical base64 encoded values - ([#38](https://github.com/haskell/base64-bytestring/pull/38)) fixing issue [#24](https://github.com/haskell/base64-bytestring/issues/24).
 
