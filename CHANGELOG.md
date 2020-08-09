@@ -4,7 +4,7 @@ See also http://pvp.haskell.org/faq
 
 * Security fix: reject non-canonical base64 encoded values - ([#38](https://github.com/haskell/base64-bytestring/pull/38)) fixing issue [#24](https://github.com/haskell/base64-bytestring/issues/24).
 
-* Security fix: reject bytestrings with improper padding that can be "completed" by the unpadded-Base64url workflow, and homogenize error messages (([#33](https://github.com/haskell/base64-bytestring/pull/33))
+* Security fix: reject bytestrings with improper padding that can be "completed" by the unpadded-Base64url workflow, and homogenize error messages ([#33](https://github.com/haskell/base64-bytestring/pull/33))
 
 * Test coverage expanded to 98% of the library. All critical paths covered.
 
