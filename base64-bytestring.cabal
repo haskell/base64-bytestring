@@ -1,6 +1,6 @@
 cabal-version:      1.12
 name:               base64-bytestring
-version:            1.2.0.0
+version:            1.2.1.0
 synopsis:           Fast base64 encoding and decoding for ByteStrings
 description:
   This package provides support for encoding and decoding binary data according to @base64@ (see also <https://tools.ietf.org/html/rfc4648 RFC 4648>) for strict and lazy ByteStrings
@@ -33,6 +33,7 @@ tested-with:
    || ==8.6.5
    || ==8.8.3
    || ==8.10.1
+   || ==8.10.2
 
 extra-source-files:
   README.md
@@ -50,7 +51,7 @@ library
   other-modules:    Data.ByteString.Base64.Internal
   build-depends:
       base        >=4   && <5
-    , bytestring  >=0.9 && <0.11
+    , bytestring  >=0.11 && <0.12
 
   ghc-options:      -Wall -funbox-strict-fields
   default-language: Haskell2010
@@ -65,12 +66,10 @@ test-suite tests
     , base64-bytestring
     , bytestring
     , containers
-    , HUnit
     , QuickCheck
-    , split
-    , test-framework
-    , test-framework-hunit
-    , test-framework-quickcheck2
+    , tasty
+    , tasty-hunit
+    , tasty-quickcheck
 
   default-language: Haskell2010
 
