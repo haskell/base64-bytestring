@@ -49,7 +49,7 @@ data Padding = Padded | Don'tCare | Unpadded deriving Eq
 -- | Encode a string into base64 form.  The result will always be a multiple
 -- of 4 bytes in length.
 encodeWith :: Padding -> EncodeTable -> ByteString -> ByteString
-encodeWith !padding (ET alfaFP encodeTable) bs = withBS bs go
+encodeWith !padding !(ET alfaFP encodeTable) !bs = withBS bs go
   where
     go !sptr !slen
       | slen > maxBound `div` 4 =
@@ -107,7 +107,7 @@ encodeWith !padding (ET alfaFP encodeTable) bs = withBS bs go
                         else finish (n + 2)
 
 
-            withForeignPtr dfp $ \dptr -> fill (castPtr dptr) sptr 0
+            withForeignPtr dfp $! \dptr -> fill (castPtr dptr) sptr 0
 
 data EncodeTable = ET !(ForeignPtr Word8) !(ForeignPtr Word16)
 
@@ -137,7 +137,7 @@ mkEncodeTable alphabet@(PS afp _ _) =
 -- For validation of padding properties, see note: $Validation
 --
 decodeWithTable :: Padding -> ForeignPtr Word8 -> ByteString -> Either String ByteString
-decodeWithTable padding decodeFP bs
+decodeWithTable padding !decodeFP bs
   | B.length bs == 0 = Right B.empty
   | otherwise = case padding of
     Padded
@@ -164,8 +164,8 @@ decodeWithTable padding decodeFP bs
 
     go !sptr !slen = do
       dfp <- mallocByteString dlen
-      withForeignPtr decodeFP $ \ !decptr ->
-        withForeignPtr dfp $ \dptr ->
+      withForeignPtr decodeFP $! \ !decptr ->
+        withForeignPtr dfp $! \dptr ->
           decodeLoop decptr sptr dptr (sptr `plusPtr` slen) dfp
 
 decodeLoop
@@ -284,7 +284,7 @@ decodeLoop !dtable !sptr !dptr !end !dfp = go dptr sptr
 -- takes the decoding table (for @base64@ or @base64url@) as the first
 -- paramert.
 decodeLenientWithTable :: ForeignPtr Word8 -> ByteString -> ByteString
-decodeLenientWithTable decodeFP bs = withBS bs go
+decodeLenientWithTable !decodeFP !bs = withBS bs go
   where
     go !sptr !slen
       | dlen <= 0 = return B.empty
@@ -332,7 +332,7 @@ decodeLenientWithTable decodeFP bs = withBS bs go
                                   fill (dp `plusPtr` 3) dNext (n+3)
           withForeignPtr dfp $ \dptr -> fill dptr sptr 0
       where
-        dlen = ((slen + 3) `div` 4) * 3
+        !dlen = ((slen + 3) `div` 4) * 3
 
 x :: Integral a => a
 x = 255
@@ -396,7 +396,7 @@ validateLastPad
       -- ^ error msg
     -> Either String ByteString
     -> Either String ByteString
-validateLastPad bs err io
+validateLastPad !bs err !io
     | B.last bs == 0x3d = Left err
     | otherwise = io
 {-# INLINE validateLastPad #-}
