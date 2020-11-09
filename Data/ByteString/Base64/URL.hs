@@ -76,8 +76,20 @@ alphabet = B.pack $ [65..90] ++ [97..122] ++ [48..57] ++ [45,95]
 {-# NOINLINE alphabet #-}
 
 decodeFP :: ForeignPtr Word8
-PS decodeFP _ _ = B.pack $ replicate 45 x ++ [62,x,x] ++ [52..61] ++ [x,x,
-  x,done,x,x,x] ++ [0..25] ++ [x,x,x,x,63,x] ++ [26..51] ++ replicate 133 x
+#if MIN_VERSION_bytestring(0,11,0)
+BS decodeFP _ =
+#else
+PS decodeFP _ _ =
+#endif
+  B.pack $ replicate 45 x
+    ++ [62,x,x]
+    ++ [52..61]
+    ++ [x,x,x,done,x,x,x]
+    ++ [0..25]
+    ++ [x,x,x,x,63,x]
+    ++ [26..51]
+    ++ replicate 133 x
+
 {-# NOINLINE decodeFP #-}
 
 x :: Integral a => a

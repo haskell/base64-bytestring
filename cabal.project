@@ -1,4 +1,1 @@
 packages: .
-
-package base64-bytestring
-  ghc-options: -fno-ignore-asserts

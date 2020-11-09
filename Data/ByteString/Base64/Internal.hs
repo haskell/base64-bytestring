@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DoAndIfThenElse #-}
 -- |
 -- Module      : Data.ByteString.Base64.Internal
@@ -20,6 +21,8 @@ module Data.ByteString.Base64.Internal
   , peek8, poke8, peek8_32
   , reChunkIn
   , Padding(..)
+  , withBS
+  , mkBS
   ) where
 
 import Data.Bits ((.|.), (.&.), shiftL, shiftR)
@@ -46,65 +49,65 @@ data Padding = Padded | Don'tCare | Unpadded deriving Eq
 -- | Encode a string into base64 form.  The result will always be a multiple
 -- of 4 bytes in length.
 encodeWith :: Padding -> EncodeTable -> ByteString -> ByteString
-encodeWith !padding (ET alfaFP encodeTable) (PS sfp soff slen)
-    | slen > maxBound `div` 4 =
+encodeWith !padding (ET alfaFP encodeTable) bs = withBS bs go
+  where
+    go !sptr !slen
+      | slen > maxBound `div` 4 =
         error "Data.ByteString.Base64.encode: input too long"
-    | otherwise = unsafePerformIO $ do
-  let dlen = ((slen + 2) `div` 3) * 4
-  dfp <- mallocByteString dlen
-  withForeignPtr alfaFP $ \aptr ->
-    withForeignPtr encodeTable $ \ep ->
-      withForeignPtr sfp $ \sptr -> do
-        let aidx n = peek8 (aptr `plusPtr` n)
-            sEnd = sptr `plusPtr` (slen + soff)
-            finish !n = return (PS dfp 0 n)
-            fill !dp !sp !n
-              | sp `plusPtr` 2 >= sEnd = complete (castPtr dp) sp n
-              | otherwise = {-# SCC "encode/fill" #-} do
-              i <- peek8_32 sp
-              j <- peek8_32 (sp `plusPtr` 1)
-              k <- peek8_32 (sp `plusPtr` 2)
-              let w = (i `shiftL` 16) .|. (j `shiftL` 8) .|. k
-                  enc = peekElemOff ep . fromIntegral
-              poke dp =<< enc (w `shiftR` 12)
-              poke (dp `plusPtr` 2) =<< enc (w .&. 0xfff)
-              fill (dp `plusPtr` 4) (sp `plusPtr` 3) (n + 4)
-            complete dp sp n
-                | sp == sEnd = finish n
-                | otherwise  = {-# SCC "encode/complete" #-} do
-              let peekSP m f = (f . fromIntegral) `fmap` peek8 (sp `plusPtr` m)
-                  twoMore    = sp `plusPtr` 2 == sEnd
-                  equals     = 0x3d :: Word8
-                  doPad = padding == Padded
-                  {-# INLINE equals #-}
-              !a <- peekSP 0 ((`shiftR` 2) . (.&. 0xfc))
-              !b <- peekSP 0 ((`shiftL` 4) . (.&. 0x03))
+      | otherwise = do
+        let dlen = ((slen + 2) `div` 3) * 4
+        dfp <- mallocByteString dlen
+        withForeignPtr alfaFP $ \aptr ->
+          withForeignPtr encodeTable $ \ep -> do
+            let aidx n = peek8 (aptr `plusPtr` n)
+                sEnd = sptr `plusPtr` slen
+                finish !n = return $ mkBS dfp n
+                fill !dp !sp !n
+                  | sp `plusPtr` 2 >= sEnd = complete (castPtr dp) sp n
+                  | otherwise = {-# SCC "encode/fill" #-} do
+                  i <- peek8_32 sp
+                  j <- peek8_32 (sp `plusPtr` 1)
+                  k <- peek8_32 (sp `plusPtr` 2)
+                  let w = (i `shiftL` 16) .|. (j `shiftL` 8) .|. k
+                      enc = peekElemOff ep . fromIntegral
+                  poke dp =<< enc (w `shiftR` 12)
+                  poke (dp `plusPtr` 2) =<< enc (w .&. 0xfff)
+                  fill (dp `plusPtr` 4) (sp `plusPtr` 3) (n + 4)
+                complete dp sp n
+                    | sp == sEnd = finish n
+                    | otherwise  = {-# SCC "encode/complete" #-} do
+                  let peekSP m f = (f . fromIntegral) `fmap` peek8 (sp `plusPtr` m)
+                      twoMore    = sp `plusPtr` 2 == sEnd
+                      equals     = 0x3d :: Word8
+                      doPad = padding == Padded
+                      {-# INLINE equals #-}
+                  !a <- peekSP 0 ((`shiftR` 2) . (.&. 0xfc))
+                  !b <- peekSP 0 ((`shiftL` 4) . (.&. 0x03))
 
-              poke8 dp =<< aidx a
+                  poke8 dp =<< aidx a
 
-              if twoMore
-                then do
-                  !b' <- peekSP 1 ((.|. b) . (`shiftR` 4) . (.&. 0xf0))
-                  !c <- aidx =<< peekSP 1 ((`shiftL` 2) . (.&. 0x0f))
-                  poke8 (dp `plusPtr` 1) =<< aidx b'
-                  poke8 (dp `plusPtr` 2) c
-
-                  if doPad
-                    then poke8 (dp `plusPtr` 3) equals >> finish (n + 4)
-                    else finish (n + 3)
-                else do
-                  poke8 (dp `plusPtr` 1) =<< aidx b
-
-                  if doPad
+                  if twoMore
                     then do
-                      poke8 (dp `plusPtr` 2) equals
-                      poke8 (dp `plusPtr` 3) equals
-                      finish (n + 4)
-                    else finish (n + 2)
+                      !b' <- peekSP 1 ((.|. b) . (`shiftR` 4) . (.&. 0xf0))
+                      !c <- aidx =<< peekSP 1 ((`shiftL` 2) . (.&. 0x0f))
+                      poke8 (dp `plusPtr` 1) =<< aidx b'
+                      poke8 (dp `plusPtr` 2) c
+
+                      if doPad
+                        then poke8 (dp `plusPtr` 3) equals >> finish (n + 4)
+                        else finish (n + 3)
+                    else do
+                      poke8 (dp `plusPtr` 1) =<< aidx b
+
+                      if doPad
+                        then do
+                          poke8 (dp `plusPtr` 2) equals
+                          poke8 (dp `plusPtr` 3) equals
+                          finish (n + 4)
+                        else finish (n + 2)
 
 
-        withForeignPtr dfp $ \dptr ->
-          fill (castPtr dptr) (sptr `plusPtr` soff) 0
+            withForeignPtr dfp $ \dptr -> fill (castPtr dptr) sptr 0
 
 data EncodeTable = ET !(ForeignPtr Word8) !(ForeignPtr Word16)
 
@@ -114,8 +117,13 @@ data EncodeTable = ET !(ForeignPtr Word8) !(ForeignPtr Word16)
 -- stored in big-endian order, as the indices into the table are built in
 -- big-endian order.
 mkEncodeTable :: ByteString -> EncodeTable
+#if MIN_VERSION_bytestring(0,11,0)
+mkEncodeTable alphabet@(BS afp _) =
+    case table of BS fp _ -> ET afp (castForeignPtr fp)
+#else
 mkEncodeTable alphabet@(PS afp _ _) =
     case table of PS fp _ _ -> ET afp (castForeignPtr fp)
+#endif
   where
     ix    = fromIntegral . B.index alphabet
     table = B.pack $ concat $ [ [ix j, ix k] | j <- [0..63], k <- [0..63] ]
@@ -129,23 +137,23 @@ mkEncodeTable alphabet@(PS afp _ _) =
 -- For validation of padding properties, see note: $Validation
 --
 decodeWithTable :: Padding -> ForeignPtr Word8 -> ByteString -> Either String ByteString
-decodeWithTable _ _ (PS _ _ 0) = Right B.empty
-decodeWithTable padding decodeFP bs =
-   case padding of
-     Padded
-       | r == 0 -> unsafePerformIO $ go bs
-       | r == 1 -> Left "Base64-encoded bytestring has invalid size"
-       | otherwise -> Left "Base64-encoded bytestring is unpadded or has invalid padding"
-     Don'tCare
-       | r == 0 -> unsafePerformIO $ go bs
-       | r == 2 -> unsafePerformIO $ go (B.append bs (B.replicate 2 0x3d))
-       | r == 3 -> validateLastPad bs invalidPad $ go (B.append bs (B.replicate 1 0x3d))
-       | otherwise -> Left "Base64-encoded bytestring has invalid size"
-     Unpadded
-       | r == 0 -> validateLastPad bs noPad $ go bs
-       | r == 2 -> validateLastPad bs noPad $ go (B.append bs (B.replicate 2 0x3d))
-       | r == 3 -> validateLastPad bs noPad $ go (B.append bs (B.replicate 1 0x3d))
-       | otherwise -> Left "Base64-encoded bytestring has invalid size"
+decodeWithTable padding decodeFP bs
+  | B.length bs == 0 = Right B.empty
+  | otherwise = case padding of
+    Padded
+      | r == 0 -> withBS bs go
+      | r == 1 -> Left "Base64-encoded bytestring has invalid size"
+      | otherwise -> Left "Base64-encoded bytestring is unpadded or has invalid padding"
+    Don'tCare
+      | r == 0 -> withBS bs go
+      | r == 2 -> withBS (B.append bs (B.replicate 2 0x3d)) go
+      | r == 3 -> validateLastPad bs invalidPad $ withBS (B.append bs (B.replicate 1 0x3d)) go
+      | otherwise -> Left "Base64-encoded bytestring has invalid size"
+    Unpadded
+      | r == 0 -> validateLastPad bs noPad $ withBS bs go
+      | r == 2 -> validateLastPad bs noPad $ withBS (B.append bs (B.replicate 2 0x3d)) go
+      | r == 3 -> validateLastPad bs noPad $ withBS (B.append bs (B.replicate 1 0x3d)) go
+      | otherwise -> Left "Base64-encoded bytestring has invalid size"
   where
     (!q, !r) = (B.length bs) `divMod` 4
 
@@ -154,13 +162,11 @@ decodeWithTable padding decodeFP bs =
 
     !dlen = q * 3
 
-    go (PS !sfp !soff !slen) = do
+    go !sptr !slen = do
       dfp <- mallocByteString dlen
       withForeignPtr decodeFP $ \ !decptr ->
-        withForeignPtr sfp $ \sptr ->
         withForeignPtr dfp $ \dptr ->
-          decodeLoop decptr (plusPtr sptr soff) dptr
-            (sptr `plusPtr` (slen + soff)) dfp
+          decodeLoop decptr sptr dptr (sptr `plusPtr` slen) dfp
 
 decodeLoop
     :: Ptr Word8
@@ -256,19 +262,19 @@ decodeLoop !dtable !sptr !dptr !end !dfp = go dptr sptr
         if c == 0x63 && d == 0x63
         then
           if sanityCheckPos b mask_4bits
-          then return $ Right $ PS dfp 0 (1 + (dst `minusPtr` dptr))
+          then return $ Right $ mkBS dfp (1 + (dst `minusPtr` dptr))
           else canonErr (plusPtr src 1)
         else if d == 0x63
           then
             if sanityCheckPos c mask_2bits
             then do
               poke8 (plusPtr dst 1) (fromIntegral (shiftR w 8))
-              return $ Right $ PS dfp 0 (2 + (dst `minusPtr` dptr))
+              return $ Right $ mkBS dfp (2 + (dst `minusPtr` dptr))
             else canonErr (plusPtr src 2)
           else do
             poke8 (plusPtr dst 1) (fromIntegral (shiftR w 8))
             poke8 (plusPtr dst 2) (fromIntegral w)
-            return $ Right $ PS dfp 0 (3 + (dst `minusPtr` dptr))
+            return $ Right $ mkBS dfp (3 + (dst `minusPtr` dptr))
 
 
 -- | Decode a base64-encoded string.  This function is lenient in
@@ -278,54 +284,55 @@ decodeLoop !dtable !sptr !dptr !end !dfp = go dptr sptr
 -- takes the decoding table (for @base64@ or @base64url@) as the first
 -- paramert.
 decodeLenientWithTable :: ForeignPtr Word8 -> ByteString -> ByteString
-decodeLenientWithTable decodeFP (PS sfp soff slen)
-    | dlen <= 0 = B.empty
-    | otherwise = unsafePerformIO $ do
-  dfp <- mallocByteString dlen
-  withForeignPtr decodeFP $ \ !decptr ->
-    withForeignPtr sfp $ \ !sptr -> do
-      let finish dbytes
-              | dbytes > 0 = return (PS dfp 0 dbytes)
-              | otherwise  = return B.empty
-          sEnd = sptr `plusPtr` (slen + soff)
-          fill !dp !sp !n
-            | sp >= sEnd = finish n
-            | otherwise = {-# SCC "decodeLenientWithTable/fill" #-}
-            let look :: Bool -> Ptr Word8
-                     -> (Ptr Word8 -> Word32 -> IO ByteString)
-                     -> IO ByteString
-                {-# INLINE look #-}
-                look skipPad p0 f = go p0
-                  where
-                    go p | p >= sEnd = f (sEnd `plusPtr` (-1)) done
-                         | otherwise = {-# SCC "decodeLenient/look" #-} do
-                      ix <- fromIntegral `fmap` peek8 p
-                      v <- peek8 (decptr `plusPtr` ix)
-                      if v == x || (v == done && skipPad)
-                        then go (p `plusPtr` 1)
-                        else f (p `plusPtr` 1) (fromIntegral v)
-            in look True sp $ \ !aNext !aValue ->
-               look True aNext $ \ !bNext !bValue ->
-                 if aValue == done || bValue == done
-                 then finish n
-                 else
-                    look False bNext $ \ !cNext !cValue ->
-                    look False cNext $ \ !dNext !dValue -> do
-                      let w = (aValue `shiftL` 18) .|. (bValue `shiftL` 12) .|.
-                              (cValue `shiftL` 6) .|. dValue
-                      poke8 dp $ fromIntegral (w `shiftR` 16)
-                      if cValue == done
-                        then finish (n + 1)
-                        else do
-                          poke8 (dp `plusPtr` 1) $ fromIntegral (w `shiftR` 8)
-                          if dValue == done
-                            then finish (n + 2)
+decodeLenientWithTable decodeFP bs = withBS bs go
+  where
+    go !sptr !slen
+      | dlen <= 0 = return B.empty
+      | otherwise = do
+        dfp <- mallocByteString dlen
+        withForeignPtr decodeFP $ \ !decptr -> do
+          let finish dbytes
+                  | dbytes > 0 = return $ mkBS dfp dbytes
+                  | otherwise = return B.empty
+              sEnd = sptr `plusPtr` slen
+              fill !dp !sp !n
+                | sp >= sEnd = finish n
+                | otherwise = {-# SCC "decodeLenientWithTable/fill" #-}
+                let look :: Bool -> Ptr Word8
+                         -> (Ptr Word8 -> Word32 -> IO ByteString)
+                         -> IO ByteString
+                    {-# INLINE look #-}
+                    look skipPad p0 f = go' p0
+                      where
+                        go' p | p >= sEnd = f (sEnd `plusPtr` (-1)) done
+                             | otherwise = {-# SCC "decodeLenient/look" #-} do
+                          ix <- fromIntegral `fmap` peek8 p
+                          v <- peek8 (decptr `plusPtr` ix)
+                          if v == x || (v == done && skipPad)
+                            then go' (p `plusPtr` 1)
+                            else f (p `plusPtr` 1) (fromIntegral v)
+                in look True sp $ \ !aNext !aValue ->
+                   look True aNext $ \ !bNext !bValue ->
+                     if aValue == done || bValue == done
+                     then finish n
+                     else
+                        look False bNext $ \ !cNext !cValue ->
+                        look False cNext $ \ !dNext !dValue -> do
+                          let w = (aValue `shiftL` 18) .|. (bValue `shiftL` 12) .|.
+                                  (cValue `shiftL` 6) .|. dValue
+                          poke8 dp $ fromIntegral (w `shiftR` 16)
+                          if cValue == done
+                            then finish (n + 1)
                             else do
-                              poke8 (dp `plusPtr` 2) $ fromIntegral w
-                              fill (dp `plusPtr` 3) dNext (n+3)
-      withForeignPtr dfp $ \dptr ->
-        fill dptr (sptr `plusPtr` soff) 0
-  where dlen = ((slen + 3) `div` 4) * 3
+                              poke8 (dp `plusPtr` 1) $ fromIntegral (w `shiftR` 8)
+                              if dValue == done
+                                then finish (n + 2)
+                                else do
+                                  poke8 (dp `plusPtr` 2) $ fromIntegral w
+                                  fill (dp `plusPtr` 3) dNext (n+3)
+          withForeignPtr dfp $ \dptr -> fill dptr sptr 0
+      where
+        dlen = ((slen + 3) `div` 4) * 3
 
 x :: Integral a => a
 x = 255
@@ -387,11 +394,11 @@ validateLastPad
       -- ^ input to validate
     -> String
       -- ^ error msg
-    -> IO (Either String ByteString)
+    -> Either String ByteString
     -> Either String ByteString
 validateLastPad bs err io
     | B.last bs == 0x3d = Left err
-    | otherwise = unsafePerformIO io
+    | otherwise = io
 {-# INLINE validateLastPad #-}
 
 -- | Sanity check an index against a bitmask to make sure
@@ -412,3 +419,30 @@ mask_2bits = 3  -- (1 << 2) - 1
 mask_4bits :: Word8
 mask_4bits = 15 -- (1 << 4) - 1
 {-# NOINLINE mask_4bits #-}
+
+-- | Back-compat shim for bytestring >=0.11. Constructs a
+-- bytestring from a foreign ptr and a length. Offset is 0.
+--
+mkBS :: ForeignPtr Word8 -> Int -> ByteString
+#if MIN_VERSION_bytestring(0,11,0)
+mkBS dfp n = BS dfp n
+#else
+mkBS dfp n = PS dfp 0 n
+#endif
+{-# INLINE mkBS #-}
+
+-- | Back-compat shim for bytestring >=0.11. Unwraps the foreign ptr of
+-- a bytestring, executing an IO action as a function of the underlying
+-- pointer and some starting length.
+--
+-- Note: in `unsafePerformIO`.
+--
+withBS :: ByteString -> (Ptr Word8 -> Int -> IO a) -> a
+#if MIN_VERSION_bytestring(0,11,0)
+withBS (BS !sfp !slen) f = unsafePerformIO $
+  withForeignPtr sfp $ \p -> f p slen
+#else
+withBS (PS !sfp !soff !slen) f = unsafePerformIO $
+  withForeignPtr sfp $ \p -> f (plusPtr p soff) slen
+#endif
+{-# INLINE withBS #-}
