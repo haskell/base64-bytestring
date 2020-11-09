@@ -51,12 +51,12 @@ library
   other-modules:    Data.ByteString.Base64.Internal
   build-depends:
       base        >=4   && <5
-    , bytestring  >=0.11 && <0.12
+    , bytestring  >=0.9 && <0.12
 
   ghc-options:      -Wall -funbox-strict-fields
   default-language: Haskell2010
 
-test-suite tests
+test-suite test
   type:             exitcode-stdio-1.0
   hs-source-dirs:   tests
   main-is:          Tests.hs
@@ -65,11 +65,11 @@ test-suite tests
       base
     , base64-bytestring
     , bytestring
-    , containers
+    , HUnit
     , QuickCheck
-    , tasty
-    , tasty-hunit
-    , tasty-quickcheck
+    , test-framework
+    , test-framework-hunit
+    , test-framework-quickcheck2
 
   default-language: Haskell2010
 
