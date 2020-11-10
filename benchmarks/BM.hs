@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Main
 ( main
@@ -79,3 +80,13 @@ main =
           !e = B64.encode (BS.concat $ replicate 10000 bss)
           !f = B64.encode (BS.concat $ replicate 100000 bss)
       return (a,b,c,d,e,f)
+
+#if __GLASGOW_HASKELL__ < 706
+#if MIN_VERSION_bytestring(0,11,0)
+instance Control.DeepSeq.NFData ByteString where
+    Control.DeepSeq.NFData.rnf BS{} = ()
+#else
+instance Control.DeepSeq.NFData ByteString where
+    Control.DeepSeq.NFData.rnf PS{} = ()
+#endif
+#endif
