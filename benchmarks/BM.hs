@@ -5,6 +5,11 @@ module Main
 ( main
 ) where
 
+#if __GLASGOW_HASKELL__ < 706
+import Control.DeepSeq (NFData(rnf))
+#else
+import Control.DeepSeq ()
+#endif
 
 import Criterion
 import Criterion.Main
@@ -83,10 +88,8 @@ main =
 
 #if __GLASGOW_HASKELL__ < 706
 #if MIN_VERSION_bytestring(0,11,0)
-instance Control.DeepSeq.NFData ByteString where
-    Control.DeepSeq.NFData.rnf BS{} = ()
+instance NFData ByteString where rnf BS{} = ()
 #else
-instance Control.DeepSeq.NFData ByteString where
-    Control.DeepSeq.NFData.rnf PS{} = ()
+instance NFData ByteString where rnf PS{} = ()
 #endif
 #endif
