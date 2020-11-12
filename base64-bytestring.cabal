@@ -84,7 +84,7 @@ benchmark benchmarks
     , bytestring
     , containers
     , criterion
-    , deepseq
+    , deepseq >=1.1
 
   default-language: Haskell2010
 
