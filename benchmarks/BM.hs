@@ -5,6 +5,7 @@ module Main
 ( main
 ) where
 
+#if __GLASGOW_HASKELL__ > 702
 #if !MIN_VERSION_bytestring(0,10,0)
 import Control.DeepSeq (NFData(rnf))
 #endif
@@ -14,10 +15,13 @@ import Criterion.Main
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64 as B64
-
+#endif
 
 main :: IO ()
 main =
+#if __GLASGOW_HASKELL__ < 704
+  return ()
+#else
   defaultMain
     [ env bs $ \ ~(bs25,bs100,bs1k,bs10k,bs100k,bs1mm) ->
       bgroup "encode"
@@ -87,4 +91,5 @@ main =
 #if !MIN_VERSION_bytestring(0,10,0)
 instance NFData BS.ByteString where
     rnf bs = bs `seq` ()
+#endif
 #endif
