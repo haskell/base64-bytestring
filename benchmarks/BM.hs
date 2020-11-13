@@ -7,7 +7,6 @@ module Main
 
 #if !MIN_VERSION_bytestring(0,10,0)
 import Control.DeepSeq (NFData(rnf))
-import qualified Data.ByteString.Lazy.Internal as L
 #endif
 
 import Criterion
@@ -86,7 +85,6 @@ main =
       return (a,b,c,d,e,f)
 
 #if !MIN_VERSION_bytestring(0,10,0)
-instance NFData L.ByteString where
-    rnf L.Empty        = ()
-    rnf (L.Chunk _ ps) = rnf ps
+instance NFData BS.ByteString where
+    rnf bs = bs `seq` ()
 #endif
