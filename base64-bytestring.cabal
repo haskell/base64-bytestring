@@ -82,7 +82,6 @@ benchmark benchmarks
       base
     , base64-bytestring
     , bytestring
-    , containers
     , criterion
     , deepseq >=1.1
 
