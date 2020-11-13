@@ -5,10 +5,9 @@ module Main
 ( main
 ) where
 
-#if __GLASGOW_HASKELL__ < 706
+#if !MIN_VERSION_bytestring(0,10,0)
 import Control.DeepSeq (NFData(rnf))
-#else
-import Control.DeepSeq ()
+import qualified Data.ByteString.Lazy.Internal as L
 #endif
 
 import Criterion
@@ -86,10 +85,8 @@ main =
           !f = B64.encode (BS.concat $ replicate 100000 bss)
       return (a,b,c,d,e,f)
 
-#if __GLASGOW_HASKELL__ < 706
-#if MIN_VERSION_bytestring(0,11,0)
-instance NFData ByteString where rnf BS{} = ()
-#else
-instance NFData ByteString where rnf PS{} = ()
-#endif
+#if !MIN_VERSION_bytestring(0,10,0)
+instance NFData L.ByteString where
+    rnf L.Empty        = ()
+    rnf (L.Chunk _ ps) = rnf ps
 #endif
