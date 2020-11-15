@@ -8,7 +8,9 @@
 -- Copyright   : (c) 2010 Bryan O'Sullivan
 --
 -- License     : BSD-style
--- Maintainer  : bos@serpentine.com
+-- Maintainer  : Emily Pillmore <emilypi@cohomolo.gy>,
+--               Herbert Valerio Riedel <hvr@gnu.org>,
+--               Mikhail Glushenkov <mikhail.glushenkov@gmail.com>
 -- Stability   : experimental
 -- Portability : GHC
 --
@@ -36,7 +38,7 @@ encode s = encodeWith Padded (mkEncodeTable alphabet) s
 -- the specification in
 -- <http://tools.ietf.org/rfc/rfc4648 RFC 4648>.
 --
--- (Note: this means that even @"\n", "\r\n"@ as line breaks are rejected
+-- (Note: this means that even @"\\n"@ and @"\\r\\n"@ as line breaks are rejected
 -- rather than ignored.  If you are using this in the context of a
 -- standard that overrules RFC 4648 such as HTTP multipart mime bodies,
 -- consider using 'decodeLenient'.)

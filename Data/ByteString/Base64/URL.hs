@@ -8,7 +8,9 @@
 -- Copyright   : (c) 2012 Deian Stefan
 --
 -- License     : BSD-style
--- Maintainer  : deian@cs.stanford.edu
+-- Maintainer  : Emily Pillmore <emilypi@cohomolo.gy>,
+--               Herbert Valerio Riedel <hvr@gnu.org>,
+--               Mikhail Glushenkov <mikhail.glushenkov@gmail.com>
 -- Stability   : experimental
 -- Portability : GHC
 --

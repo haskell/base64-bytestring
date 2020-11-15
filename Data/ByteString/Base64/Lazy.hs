@@ -8,7 +8,9 @@
 -- Copyright   : (c) 2012 Ian Lynagh
 --
 -- License     : BSD-style
--- Maintainer  : bos@serpentine.com
+-- Maintainer  : Emily Pillmore <emilypi@cohomolo.gy>,
+--               Herbert Valerio Riedel <hvr@gnu.org>,
+--               Mikhail Glushenkov <mikhail.glushenkov@gmail.com>
 -- Stability   : experimental
 -- Portability : GHC
 --
