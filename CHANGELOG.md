@@ -1,6 +1,6 @@
 See also http://pvp.haskell.org/faq
 
-# 1.2.1.0
+# 1.2.0.1
 
 * Package update: support for `bytestring >=0.11`
  
