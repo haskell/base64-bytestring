@@ -160,7 +160,7 @@ decodeWithTable padding !decodeFP bs
     noPad = "Base64-encoded bytestring required to be unpadded"
     invalidPad = "Base64-encoded bytestring has invalid padding"
 
-    !dlen = q * 3
+    !dlen = (q + signum r) * 3
 
     go !sptr !slen = do
       dfp <- mallocByteString dlen
