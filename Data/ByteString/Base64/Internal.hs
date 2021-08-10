@@ -49,13 +49,13 @@ data Padding = Padded | Don'tCare | Unpadded deriving Eq
 -- | Encode a string into base64 form.  The result will always be a multiple
 -- of 4 bytes in length.
 encodeWith :: Padding -> EncodeTable -> ByteString -> ByteString
-encodeWith !padding !(ET alfaFP encodeTable) !bs = withBS bs go
+encodeWith !padding (ET alfaFP encodeTable) !bs = withBS bs go
   where
     go !sptr !slen
       | slen > maxBound `div` 4 =
         error "Data.ByteString.Base64.encode: input too long"
       | otherwise = do
-        let dlen = ((slen + 2) `div` 3) * 4
+        let dlen = (slen + 2) `div` 3 * 4
         dfp <- mallocByteString dlen
         withForeignPtr alfaFP $ \aptr ->
           withForeignPtr encodeTable $ \ep -> do
@@ -68,7 +68,7 @@ encodeWith !padding !(ET alfaFP encodeTable) !bs = withBS bs go
                   i <- peek8_32 sp
                   j <- peek8_32 (sp `plusPtr` 1)
                   k <- peek8_32 (sp `plusPtr` 2)
-                  let w = (i `shiftL` 16) .|. (j `shiftL` 8) .|. k
+                  let w = i `shiftL` 16 .|. j `shiftL` 8 .|. k
                       enc = peekElemOff ep . fromIntegral
                   poke dp =<< enc (w `shiftR` 12)
                   poke (dp `plusPtr` 2) =<< enc (w .&. 0xfff)
@@ -107,7 +107,7 @@ encodeWith !padding !(ET alfaFP encodeTable) !bs = withBS bs go
                         else finish (n + 2)
 
 
-            withForeignPtr dfp $! \dptr -> fill (castPtr dptr) sptr 0
+            withForeignPtr dfp (\dptr -> fill (castPtr dptr) sptr 0)
 
 data EncodeTable = ET !(ForeignPtr Word8) !(ForeignPtr Word16)
 
@@ -155,18 +155,16 @@ decodeWithTable padding !decodeFP bs
       | r == 3 -> validateLastPad bs noPad $ withBS (B.append bs (B.replicate 1 0x3d)) go
       | otherwise -> Left "Base64-encoded bytestring has invalid size"
   where
-    (!q, !r) = (B.length bs) `divMod` 4
+    !r = B.length bs `rem` 4
 
     noPad = "Base64-encoded bytestring required to be unpadded"
     invalidPad = "Base64-encoded bytestring has invalid padding"
 
-    !dlen = q * 3
-
     go !sptr !slen = do
-      dfp <- mallocByteString dlen
-      withForeignPtr decodeFP $! \ !decptr ->
-        withForeignPtr dfp $! \dptr ->
-          decodeLoop decptr sptr dptr (sptr `plusPtr` slen) dfp
+      dfp <- mallocByteString (slen `quot` 4 * 3)
+      withForeignPtr decodeFP (\ !decptr ->
+        withForeignPtr dfp (\dptr ->
+          decodeLoop decptr sptr dptr (sptr `plusPtr` slen) dfp))
 
 decodeLoop
     :: Ptr Word8
@@ -229,9 +227,9 @@ decodeLoop !dtable !sptr !dptr !end !dfp = go dptr sptr
      | c == 0xff = err (plusPtr src 2)
      | d == 0xff = err (plusPtr src 3)
      | otherwise = do
-       let !w = ((shiftL a 18)
-             .|. (shiftL b 12)
-             .|. (shiftL c 6)
+       let !w = (shiftL a 18
+             .|. shiftL b 12
+             .|. shiftL c 6
              .|. d) :: Word32
 
        poke8 dst (fromIntegral (shiftR w 16))
@@ -252,9 +250,9 @@ decodeLoop !dtable !sptr !dptr !end !dfp = go dptr sptr
       | c == 0xff = err (plusPtr src 2)
       | d == 0xff = err (plusPtr src 3)
       | otherwise = do
-        let !w = ((shiftL a 18)
-              .|. (shiftL b 12)
-              .|. (shiftL c 6)
+        let !w = (shiftL a 18
+              .|. shiftL b 12
+              .|. shiftL c 6
               .|. d) :: Word32
 
         poke8 dst (fromIntegral (shiftR w 16))
@@ -308,7 +306,7 @@ decodeLenientWithTable !decodeFP !bs = withBS bs go
                              | otherwise = {-# SCC "decodeLenient/look" #-} do
                           ix <- fromIntegral `fmap` peek8 p
                           v <- peek8 (decptr `plusPtr` ix)
-                          if v == x || (v == done && skipPad)
+                          if v == x || v == done && skipPad
                             then go' (p `plusPtr` 1)
                             else f (p `plusPtr` 1) (fromIntegral v)
                 in look True sp $ \ !aNext !aValue ->
@@ -318,8 +316,8 @@ decodeLenientWithTable !decodeFP !bs = withBS bs go
                      else
                         look False bNext $ \ !cNext !cValue ->
                         look False cNext $ \ !dNext !dValue -> do
-                          let w = (aValue `shiftL` 18) .|. (bValue `shiftL` 12) .|.
-                                  (cValue `shiftL` 6) .|. dValue
+                          let w = aValue `shiftL` 18 .|. bValue `shiftL` 12 .|.
+                                  cValue `shiftL` 6 .|. dValue
                           poke8 dp $ fromIntegral (w `shiftR` 16)
                           if cValue == done
                             then finish (n + 1)
@@ -332,7 +330,7 @@ decodeLenientWithTable !decodeFP !bs = withBS bs go
                                   fill (dp `plusPtr` 3) dNext (n+3)
           withForeignPtr dfp $ \dptr -> fill dptr sptr 0
       where
-        !dlen = ((slen + 3) `div` 4) * 3
+        !dlen = (slen + 3) `div` 4 * 3
 
 x :: Integral a => a
 x = 255
@@ -405,7 +403,7 @@ validateLastPad !bs err !io
 -- it's coherent. If pos & mask == 0, we're good. If not, we should fail.
 --
 sanityCheckPos :: Word32 -> Word8 -> Bool
-sanityCheckPos pos mask = ((fromIntegral pos) .&. mask) == 0
+sanityCheckPos pos mask = fromIntegral pos .&. mask == 0
 {-# INLINE sanityCheckPos #-}
 
 -- | Mask 2 bits
