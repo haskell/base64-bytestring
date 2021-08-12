@@ -1,9 +1,14 @@
 See also http://pvp.haskell.org/faq
 
+# 1.2.1.0
+
+* Bugfix for GHC 9.0.1 memory corruption bug ([#46](https://github.com/haskell/base64-bytestring/pull/46))
+  * Thanks to [Fraser Tweedale](https://github.com/frasertweedale) and [Andrew Lelechenko](https://github.com/bodigrim) for logging and helping with this fix.
+
 # 1.2.0.1
 
 * Package update: support for `bytestring >=0.11`
- 
+
 # 1.2.0.0
 
 * Security fix: reject non-canonical base64 encoded values - ([#38](https://github.com/haskell/base64-bytestring/pull/38)) fixing issue [#24](https://github.com/haskell/base64-bytestring/issues/24).
