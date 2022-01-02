@@ -113,7 +113,7 @@ data EncodeTable = ET !(ForeignPtr Word8) !(ForeignPtr Word16)
 
 -- The encoding table is constructed such that the expansion of a 12-bit
 -- block to a 16-bit block can be done by a single Word16 copy from the
--- correspoding table entry to the target address. The 16-bit blocks are
+-- corresponding table entry to the target address. The 16-bit blocks are
 -- stored in big-endian order, as the indices into the table are built in
 -- big-endian order.
 mkEncodeTable :: ByteString -> EncodeTable
