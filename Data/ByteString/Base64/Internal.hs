@@ -280,7 +280,7 @@ decodeLoop !dtable !sptr !dptr !end !dfp = go dptr sptr
 -- <http://tools.ietf.org/rfc/rfc4648 RFC 4648>, and will not
 -- generate parse errors no matter how poor its input.  This function
 -- takes the decoding table (for @base64@ or @base64url@) as the first
--- paramert.
+-- parameter.
 decodeLenientWithTable :: ForeignPtr Word8 -> ByteString -> ByteString
 decodeLenientWithTable !decodeFP !bs = withBS bs go
   where
