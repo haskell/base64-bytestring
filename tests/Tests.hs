@@ -143,7 +143,7 @@ instance Arbitrary ByteString where
 instance Arbitrary L.ByteString where
   arbitrary = liftM L.pack arbitrary
 
--- | Decoding an encoded sintrg should produce the original string.
+-- | Decoding an encoded string should produce the original string.
 genericDecodeEncode
   :: (Arbitrary bs, Eq bs)
   => (bs -> bs)
@@ -219,7 +219,7 @@ base64url_testData_nopad = [("",                "")
                            ,("Ex\0am\254ple",   "RXgAYW3-cGxl")
                            ,("Ex\0am\255ple",   "RXgAYW3_cGxl")
                            ]
--- | Generic test given encod enad decode funstions and a
+-- | Generic test given encode and decode functions and a
 -- list of (plain, encoded) pairs
 base64_string_test
   :: ( AllRepresentations bs
