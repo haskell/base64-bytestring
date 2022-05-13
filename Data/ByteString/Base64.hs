@@ -36,7 +36,7 @@ encode s = encodeWith Padded (mkEncodeTable alphabet) s
 
 -- | Decode a base64-encoded string. This function strictly follows
 -- the specification in
--- <http://tools.ietf.org/rfc/rfc4648 RFC 4648>.
+-- <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>.
 --
 -- (Note: this means that even @"\\n"@ and @"\\r\\n"@ as line breaks are rejected
 -- rather than ignored.  If you are using this in the context of a
@@ -47,7 +47,7 @@ decode s = decodeWithTable Padded decodeFP s
 
 -- | Decode a base64-encoded string.  This function is lenient in
 -- following the specification from
--- <http://tools.ietf.org/rfc/rfc4648 RFC 4648>, and will not
+-- <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>, and will not
 -- generate parse errors no matter how poor its input.
 decodeLenient :: ByteString -> ByteString
 decodeLenient s = decodeLenientWithTable decodeFP s

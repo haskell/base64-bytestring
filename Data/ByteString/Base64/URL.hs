@@ -44,22 +44,22 @@ encodeUnpadded :: ByteString -> ByteString
 encodeUnpadded = encodeWith Unpadded (mkEncodeTable alphabet)
 
 -- | Decode a base64url-encoded string applying padding if necessary.
--- This function follows the specification in <http://tools.ietf.org/rfc/rfc4648 RFC 4648>
--- and in <https://tools.ietf.org/html/rfc7049#section-2.4.4.2 RFC 7049 2.4>
+-- This function follows the specification in <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>
+-- and in <https://datatracker.ietf.org/doc/html/rfc7049#section-2.4.4.2 RFC 7049 2.4>
 decode :: ByteString -> Either String ByteString
 decode = decodeWithTable Don'tCare decodeFP
 
 -- | Decode a padded base64url-encoded string, failing if input is improperly padded.
--- This function follows the specification in <http://tools.ietf.org/rfc/rfc4648 RFC 4648>
--- and in <https://tools.ietf.org/html/rfc7049#section-2.4.4.2 RFC 7049 2.4>
+-- This function follows the specification in <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>
+-- and in <https://datatracker.ietf.org/doc/html/rfc7049#section-2.4.4.2 RFC 7049 2.4>
 --
 -- @since 1.1.0.0
 decodePadded :: ByteString -> Either String ByteString
 decodePadded = decodeWithTable Padded decodeFP
 
 -- | Decode a unpadded base64url-encoded string, failing if input is padded.
--- This function follows the specification in <http://tools.ietf.org/rfc/rfc4648 RFC 4648>
--- and in <https://tools.ietf.org/html/rfc7049#section-2.4.4.2 RFC 7049 2.4>
+-- This function follows the specification in <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>
+-- and in <https://datatracker.ietf.org/doc/html/rfc7049#section-2.4.4.2 RFC 7049 2.4>
 --
 -- @since 1.1.0.0
 decodeUnpadded :: ByteString -> Either String ByteString
@@ -67,7 +67,7 @@ decodeUnpadded = decodeWithTable Unpadded decodeFP
 
 -- | Decode a base64url-encoded string.  This function is lenient in
 -- following the specification from
--- <http://tools.ietf.org/rfc/rfc4648 RFC 4648>, and will not
+-- <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>, and will not
 -- generate parse errors no matter how poor its input.
 decodeLenient :: ByteString -> ByteString
 decodeLenient = decodeLenientWithTable decodeFP
