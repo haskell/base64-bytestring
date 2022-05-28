@@ -129,7 +129,7 @@ mkEncodeTable alphabet@(PS afp _ _) =
     table = B.pack $ concat $ [ [ix j, ix k] | j <- [0..63], k <- [0..63] ]
 
 -- | Decode a base64-encoded string.  This function strictly follows
--- the specification in <http://tools.ietf.org/rfc/rfc4648 RFC 4648>.
+-- the specification in <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>.
 --
 -- This function takes the decoding table (for @base64@ or @base64url@) as
 -- the first parameter.
@@ -277,7 +277,7 @@ decodeLoop !dtable !sptr !dptr !end !dfp = go dptr sptr
 
 -- | Decode a base64-encoded string.  This function is lenient in
 -- following the specification from
--- <http://tools.ietf.org/rfc/rfc4648 RFC 4648>, and will not
+-- <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>, and will not
 -- generate parse errors no matter how poor its input.  This function
 -- takes the decoding table (for @base64@ or @base64url@) as the first
 -- parameter.

@@ -51,7 +51,7 @@ encodeUnpadded = L.fromChunks
 
 -- | Decode a base64-encoded string.  This function strictly follows
 -- the specification in
--- <http://tools.ietf.org/rfc/rfc4648 RFC 4648>.
+-- <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>.
 decode :: L.ByteString -> Either String L.ByteString
 decode b = -- Returning an Either type means that the entire result will
            -- need to be in memory at once anyway, so we may as well
@@ -64,8 +64,8 @@ decode b = -- Returning an Either type means that the entire result will
            Right b' -> Right $ L.fromChunks [b']
 
 -- | Decode a unpadded base64url-encoded string, failing if input is padded.
--- This function follows the specification in <http://tools.ietf.org/rfc/rfc4648 RFC 4648>
--- and in <https://tools.ietf.org/html/rfc7049#section-2.4.4.2 RFC 7049 2.4>
+-- This function follows the specification in <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>
+-- and in <https://datatracker.ietf.org/doc/html/rfc7049#section-2.4.4.2 RFC 7049 2.4>
 --
 -- @since 1.1.0.0
 decodeUnpadded :: L.ByteString -> Either String L.ByteString
@@ -74,8 +74,8 @@ decodeUnpadded bs = case B64.decodeUnpadded $ S.concat $ L.toChunks bs of
   Left e -> Left e
 
 -- | Decode a padded base64url-encoded string, failing if input is improperly padded.
--- This function follows the specification in <http://tools.ietf.org/rfc/rfc4648 RFC 4648>
--- and in <https://tools.ietf.org/html/rfc7049#section-2.4.4.2 RFC 7049 2.4>
+-- This function follows the specification in <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>
+-- and in <https://datatracker.ietf.org/doc/html/rfc7049#section-2.4.4.2 RFC 7049 2.4>
 --
 -- @since 1.1.0.0
 decodePadded :: L.ByteString -> Either String L.ByteString
@@ -85,7 +85,7 @@ decodePadded bs = case B64.decodePadded $ S.concat $ L.toChunks bs of
 
 -- | Decode a base64-encoded string.  This function is lenient in
 -- following the specification from
--- <http://tools.ietf.org/rfc/rfc4648 RFC 4648>, and will not generate
+-- <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>, and will not generate
 -- parse errors no matter how poor its input.
 decodeLenient :: L.ByteString -> L.ByteString
 decodeLenient = L.fromChunks . map B64.decodeLenient . reChunkIn 4 . L.toChunks
