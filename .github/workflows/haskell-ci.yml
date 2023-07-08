@@ -284,10 +284,10 @@ jobs:
       - name: prepare for constraint sets
         run: |
           rm -f cabal.project.local
-      - name: constraint set bytestring-0.11
+      - name: constraint set bytestring-0.12
         run: |
-          if [ $((HCNUMVER >= 81000 && HCNUMVER < 90000)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='bytestring >=0.11 && <0.12' --dependencies-only -j2 all ; fi
-          if [ $((HCNUMVER >= 81000 && HCNUMVER < 90000)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='bytestring >=0.11 && <0.12' all ; fi
+          if [ $((HCNUMVER >= 90600)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='bytestring >=0.12' --dependencies-only -j2 all ; fi
+          if [ $((HCNUMVER >= 90600)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='bytestring >=0.12' all ; fi
       - name: save cache
         uses: actions/cache/save@v3
         if: always()
