@@ -9,3 +9,5 @@ constraint-set bytestring-0.12
   tests: True
   run-tests: True
 
+raw-project
+  allow-newer: bytestring
