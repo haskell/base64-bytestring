@@ -2,6 +2,12 @@ branches: master ci*
 
 -- unconstrained: False
 
-constraint-set bytestring-0.11
-  ghc: == 8.10.7
-  constraints: bytestring >=0.11 && <0.12
+constraint-set bytestring-0.12
+  ghc: >= 9.6
+  constraints: bytestring >=0.12
+  -- allow-newer: bytestring -- not supported here
+  tests: True
+  run-tests: True
+
+raw-project
+  allow-newer: bytestring
