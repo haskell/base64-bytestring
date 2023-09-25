@@ -136,8 +136,8 @@ mkEncodeTable alphabet@(PS afp _ _) =
 --
 -- For validation of padding properties, see note: $Validation
 --
-decodeWithTable :: Padding -> ForeignPtr Word8 -> ByteString -> Either String ByteString
-decodeWithTable padding !decodeFP bs
+decodeWithTable :: Bool -> Padding -> ForeignPtr Word8 -> ByteString -> Either String ByteString
+decodeWithTable canonicityPassthru padding !decodeFP bs
   | B.length bs == 0 = Right B.empty
   | otherwise = case padding of
     Padded
@@ -164,10 +164,11 @@ decodeWithTable padding !decodeFP bs
       dfp <- mallocByteString (slen `quot` 4 * 3)
       withForeignPtr decodeFP (\ !decptr ->
         withForeignPtr dfp (\dptr ->
-          decodeLoop decptr sptr dptr (sptr `plusPtr` slen) dfp))
+          decodeLoop canonicityPassthru decptr sptr dptr (sptr `plusPtr` slen) dfp))
 
 decodeLoop
-    :: Ptr Word8
+    :: Bool
+    -> Ptr Word8
       -- ^ decoding table pointer
     -> Ptr Word8
       -- ^ source pointer
@@ -178,7 +179,7 @@ decodeLoop
     -> ForeignPtr Word8
       -- ^ destination foreign pointer (used for finalizing string)
     -> IO (Either String ByteString)
-decodeLoop !dtable !sptr !dptr !end !dfp = go dptr sptr
+decodeLoop !canonicityPassthru !dtable !sptr !dptr !end !dfp = go dptr sptr
   where
     err p = return . Left
       $ "invalid character at offset: "
@@ -259,12 +260,12 @@ decodeLoop !dtable !sptr !dptr !end !dfp = go dptr sptr
 
         if c == 0x63 && d == 0x63
         then
-          if sanityCheckPos b mask_4bits
+          if sanityCheckPos canonicityPassthru b mask_4bits
           then return $ Right $ mkBS dfp (1 + (dst `minusPtr` dptr))
           else canonErr (plusPtr src 1)
         else if d == 0x63
           then
-            if sanityCheckPos c mask_2bits
+            if sanityCheckPos canonicityPassthru c mask_2bits
             then do
               poke8 (plusPtr dst 1) (fromIntegral (shiftR w 8))
               return $ Right $ mkBS dfp (2 + (dst `minusPtr` dptr))
@@ -402,8 +403,10 @@ validateLastPad !bs err !io
 -- | Sanity check an index against a bitmask to make sure
 -- it's coherent. If pos & mask == 0, we're good. If not, we should fail.
 --
-sanityCheckPos :: Word32 -> Word8 -> Bool
-sanityCheckPos pos mask = fromIntegral pos .&. mask == 0
+sanityCheckPos :: Bool -> Word32 -> Word8 -> Bool
+sanityCheckPos passthru pos mask
+  | passthru = True
+  | otherwise = fromIntegral pos .&. mask == 0
 {-# INLINE sanityCheckPos #-}
 
 -- | Mask 2 bits

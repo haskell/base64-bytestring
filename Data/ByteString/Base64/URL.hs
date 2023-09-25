@@ -21,8 +21,11 @@ module Data.ByteString.Base64.URL
   ( encode
   , encodeUnpadded
   , decode
+  , decodeNonCanonical
   , decodePadded
+  , decodePaddedNonCanonical
   , decodeUnpadded
+  , decodeUnpaddedNonCanonical
   , decodeLenient
   ) where
 
@@ -47,7 +50,14 @@ encodeUnpadded = encodeWith Unpadded (mkEncodeTable alphabet)
 -- This function follows the specification in <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>
 -- and in <https://datatracker.ietf.org/doc/html/rfc7049#section-2.4.4.2 RFC 7049 2.4>
 decode :: ByteString -> Either String ByteString
-decode = decodeWithTable Don'tCare decodeFP
+decode = decodeWithTable False Don'tCare decodeFP
+
+-- | Decode a base64url-encoded string allowing for non-canonical inputs.
+-- This function strictly follows the specification in
+-- <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>.
+--
+decodeNonCanonical :: ByteString -> Either String ByteString
+decodeNonCanonical = decodeWithTable True Don'tCare decodeFP
 
 -- | Decode a padded base64url-encoded string, failing if input is improperly padded.
 -- This function follows the specification in <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>
@@ -55,7 +65,14 @@ decode = decodeWithTable Don'tCare decodeFP
 --
 -- @since 1.1.0.0
 decodePadded :: ByteString -> Either String ByteString
-decodePadded = decodeWithTable Padded decodeFP
+decodePadded = decodeWithTable False Padded decodeFP
+
+-- | Decode a padded base64url-encoded string allowing for non-canonical inputs.
+-- This function strictly follows the specification in
+-- <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>.
+--
+decodePaddedNonCanonical :: ByteString -> Either String ByteString
+decodePaddedNonCanonical s = decodeWithTable True Padded decodeFP s
 
 -- | Decode a unpadded base64url-encoded string, failing if input is padded.
 -- This function follows the specification in <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>
@@ -63,7 +80,14 @@ decodePadded = decodeWithTable Padded decodeFP
 --
 -- @since 1.1.0.0
 decodeUnpadded :: ByteString -> Either String ByteString
-decodeUnpadded = decodeWithTable Unpadded decodeFP
+decodeUnpadded = decodeWithTable False Unpadded decodeFP
+
+-- | Decode an upadded base64url-encoded string allowing for non-canonical inputs.
+-- This function strictly follows the specification in
+-- <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>.
+--
+decodeUnpaddedNonCanonical :: ByteString -> Either String ByteString
+decodeUnpaddedNonCanonical s = decodeWithTable True Unpadded decodeFP s
 
 -- | Decode a base64url-encoded string.  This function is lenient in
 -- following the specification from
