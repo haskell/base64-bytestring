@@ -21,7 +21,6 @@ module Data.ByteString.Base64
   ( encode
   , decode
   , decodeLenient
-  , decodeNonCanonical
   ) where
 
 import Data.ByteString.Base64.Internal
@@ -44,18 +43,7 @@ encode s = encodeWith Padded (mkEncodeTable alphabet) s
 -- standard that overrules RFC 4648 such as HTTP multipart mime bodies,
 -- consider using 'decodeLenient'.)
 decode :: ByteString -> Either String ByteString
-decode s = decodeWithTable False Padded decodeFP s
-
--- | Decode a base64-encoded string allowing for non-canonical inputs.
--- This function strictly follows the specification in
--- <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>.
---
--- (Note: this means that even @"\\n"@ and @"\\r\\n"@ as line breaks are rejected
--- rather than ignored.  If you are using this in the context of a
--- standard that overrules RFC 4648 such as HTTP multipart mime bodies,
--- consider using 'decodeLenient'.)
-decodeNonCanonical :: ByteString -> Either String ByteString
-decodeNonCanonical s = decodeWithTable True Padded decodeFP s
+decode s = decodeWithTable Padded decodeFP s
 
 -- | Decode a base64-encoded string.  This function is lenient in
 -- following the specification from

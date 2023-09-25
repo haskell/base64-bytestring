@@ -22,7 +22,6 @@ module Data.ByteString.Base64.Lazy
     (
       encode
     , decode
-    , decodeNonCanonical
     , decodeLenient
     ) where
 
@@ -49,20 +48,6 @@ decode b = -- Returning an Either type means that the entire result will
            -- TODO: Use L.{fromStrict,toStrict} once we can rely on
            -- a new enough bytestring
            case B64.decode $ S.concat $ L.toChunks b of
-           Left err -> Left err
-           Right b' -> Right $ L.fromChunks [b']
-
--- | Decode a base64-encoded string.  This function strictly follows
--- the specification in
--- <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>.
-decodeNonCanonical :: L.ByteString -> Either String L.ByteString
-decodeNonCanonical b = -- Returning an Either type means that the entire result will
-           -- need to be in memory at once anyway, so we may as well
-           -- keep it simple and just convert to and from a strict byte
-           -- string
-           -- TODO: Use L.{fromStrict,toStrict} once we can rely on
-           -- a new enough bytestring
-           case B64.decodeNonCanonical $ S.concat $ L.toChunks b of
            Left err -> Left err
            Right b' -> Right $ L.fromChunks [b']
 

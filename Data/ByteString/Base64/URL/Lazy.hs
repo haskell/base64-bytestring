@@ -23,11 +23,8 @@ module Data.ByteString.Base64.URL.Lazy
       encode
     , encodeUnpadded
     , decode
-    , decodeNonCanonical
     , decodeUnpadded
-    , decodeUnpaddedNonCanonical
     , decodePadded
-    , decodePaddedNonCanonical
     , decodeLenient
     ) where
 
@@ -66,35 +63,13 @@ decode b = -- Returning an Either type means that the entire result will
            Left err -> Left err
            Right b' -> Right $ L.fromChunks [b']
 
--- | Decode a base64url-encoded string allowing for non-canonical inputs.
--- This function strictly follows the specification in
--- <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>.
---
--- | Decode a base64-encoded string.  This function strictly follows
--- the specification in
--- <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>.
-decodeNonCanonical :: L.ByteString -> Either String L.ByteString
-decodeNonCanonical b = -- Returning an Either type means that the entire result will
-           -- need to be in memory at once anyway, so we may as well
-           -- keep it simple and just convert to and from a strict byte
-           -- string
-           -- TODO: Use L.{fromStrict,toStrict} once we can rely on
-           -- a new enough bytestring
-           case B64.decodeNonCanonical $ S.concat $ L.toChunks b of
-           Left err -> Left err
-           Right b' -> Right $ L.fromChunks [b']
-
+-- | Decode a unpadded base64url-encoded string, failing if input is padded.
+-- This function follows the specification in <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>
+-- and in <https://datatracker.ietf.org/doc/html/rfc7049#section-2.4.4.2 RFC 7049 2.4>
 --
 -- @since 1.1.0.0
 decodeUnpadded :: L.ByteString -> Either String L.ByteString
 decodeUnpadded bs = case B64.decodeUnpadded $ S.concat $ L.toChunks bs of
-  Right b -> Right $ L.fromChunks [b]
-  Left e -> Left e
-
---
--- @since 1.1.0.0
-decodeUnpaddedNonCanonical :: L.ByteString -> Either String L.ByteString
-decodeUnpaddedNonCanonical bs = case B64.decodeUnpaddedNonCanonical $ S.concat $ L.toChunks bs of
   Right b -> Right $ L.fromChunks [b]
   Left e -> Left e
 
@@ -105,16 +80,6 @@ decodeUnpaddedNonCanonical bs = case B64.decodeUnpaddedNonCanonical $ S.concat $
 -- @since 1.1.0.0
 decodePadded :: L.ByteString -> Either String L.ByteString
 decodePadded bs = case B64.decodePadded $ S.concat $ L.toChunks bs of
-  Right b -> Right $ L.fromChunks [b]
-  Left e -> Left e
-
--- | Decode a padded base64url-encoded string, failing if input is improperly padded. This variation allows for non-canonical encodings.
--- This function follows the specification in <https://datatracker.ietf.org/doc/html/rfc4648 RFC 4648>
--- and in <https://datatracker.ietf.org/doc/html/rfc7049#section-2.4.4.2 RFC 7049 2.4>
---
--- @since 1.1.0.0
-decodePaddedNonCanonical :: L.ByteString -> Either String L.ByteString
-decodePaddedNonCanonical bs = case B64.decodePaddedNonCanonical $ S.concat $ L.toChunks bs of
   Right b -> Right $ L.fromChunks [b]
   Left e -> Left e
 

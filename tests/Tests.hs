@@ -33,7 +33,6 @@ data Impl bs = Impl
   { _label :: String
   , _encode :: bs -> bs
   , _decode :: bs -> Either String bs
-  , _decodeNc :: bs -> Either String bs
   , _lenient :: bs -> bs
   }
 
@@ -41,12 +40,9 @@ data UrlImpl bs = UrlImpl
   { _labelUrl :: String
   , _encodeUrl :: bs -> bs
   , _decodeUrl :: bs -> Either String bs
-  , _decodeUrlNc :: bs -> Either String bs
   , _encodeUrlNopad :: bs -> bs
   , _decodeUrlNopad :: bs -> Either String bs
-  , _decodeUrlNopadNc :: bs -> Either String bs
   , _decodeUrlPad :: bs -> Either String bs
-  , _decodeUrlPadNc :: bs -> Either String bs
   , _lenientUrl :: bs -> bs
   }
 
@@ -64,31 +60,25 @@ tests =
     ]
   ]
   where
-    b64impl = Impl "Base64" Base64.encode Base64.decode Base64.decodeNonCanonical Base64.decodeLenient
-    lb64impl = Impl "LBase64" LBase64.encode LBase64.decode LBase64.decodeNonCanonical LBase64.decodeLenient
+    b64impl = Impl "Base64" Base64.encode Base64.decode Base64.decodeLenient
+    lb64impl = Impl "LBase64" LBase64.encode LBase64.decode LBase64.decodeLenient
 
     b64uimpl = UrlImpl
       "Base64URL"
       Base64URL.encode
       Base64URL.decode
-      Base64URL.decodeNonCanonical
       Base64URL.encodeUnpadded
       Base64URL.decodeUnpadded
-      Base64URL.decodeUnpaddedNonCanonical
       Base64URL.decodePadded
-      Base64URL.decodePaddedNonCanonical
       Base64URL.decodeLenient
 
     lb64uimpl = UrlImpl
       "LBase64URL"
       LBase64URL.encode
       LBase64URL.decode
-      LBase64URL.decodeNonCanonical
       LBase64URL.encodeUnpadded
       LBase64URL.decodeUnpadded
-      LBase64URL.decodeUnpaddedNonCanonical
       LBase64URL.decodePadded
-      LBase64URL.decodePaddedNonCanonical
       LBase64URL.decodeLenient
 
 
@@ -112,11 +102,10 @@ testsURL
      )
   => UrlImpl bs
   -> Test
-testsURL (UrlImpl l e d dnc eu du dunc dp dpnc dl) = testGroup l
-  [ testsWith base64url_testData (Impl "Arbitrary Padding" e d dnc dl)
-
-  , testsWith base64url_testData (Impl "Required Padding" e dp dpnc dl)
-  , testsWith base64url_testData_nopad (Impl "No padding" eu du dunc dl)
+testsURL (UrlImpl l e d eu du dp dl) = testGroup l
+  [ testsWith base64url_testData (Impl "Arbitrary Padding" e d dl)
+  , testsWith base64url_testData (Impl "Required Padding" e dp dl)
+  , testsWith base64url_testData_nopad (Impl "No padding" eu du dl)
   , testProperty "prop_url_pad_roundtrip" $ \bs -> Right bs == dp (e bs)
   , testProperty "prop_url_nopad_roundtrip" $ \bs -> Right bs == du (eu bs)
   , testProperty "prop_url_decode_invariant" $ \bs ->
@@ -136,8 +125,6 @@ testsWith
 testsWith testData impl = testGroup label
     [ testProperty "decodeEncode" $
       genericDecodeEncode encode decode
-    , testProperty "decodeNcEncode" $
-      genericDecodeEncode encode decodeNc
     , testProperty "decodeEncode Lenient" $
       genericDecodeEncode encode (liftM Right lenient)
     , testGroup "base64-string tests" (string_tests testData impl)
@@ -146,7 +133,6 @@ testsWith testData impl = testGroup label
     label = _label impl
     encode = _encode impl
     decode = _decode impl
-    decodeNc = _decodeNc impl
     lenient = _lenient impl
 
 instance Arbitrary ByteString where
@@ -183,11 +169,8 @@ string_tests
   => [(bs, bs)]
   -> Impl bs
   -> [Test]
-string_tests testData (Impl _ encode decode decodeNc decodeLenient) = concat
-    [ base64_string_test encode decode testData
-    , base64_string_test encode decodeNc testData
-    , base64_string_test encode decodeLenient' testData
-    ]
+string_tests testData (Impl _ encode decode decodeLenient) =
+    base64_string_test encode decode testData ++ base64_string_test encode decodeLenient' testData
   where
     decodeLenient' = liftM Right decodeLenient
 
@@ -315,32 +298,24 @@ base64UrlUnitTests = testGroup "Base64URL unit tests"
           Base64.decode "eAoe=Ao=" @=? Left "invalid padding at offset: 4"
           Base64.decode "eAoeA=o=" @=? Left "invalid padding at offset: 5"
       ]
-    , testGroup "Non-canonical/canonical encodings fail/succeed for the right inputs "
+    , testGroup "Non-canonical encodings fail and canonical encodings succeed"
       [ testCase "roundtrip for d ~ ZA==" $ do
         Base64.decode "ZE==" @=? Left "non-canonical encoding detected at offset: 1"
         Base64.decode "ZK==" @=? Left "non-canonical encoding detected at offset: 1"
-        Base64.decodeNonCanonical "ZE==" @=? Right "d"
-        Base64.decodeNonCanonical "ZK==" @=? Right "d"
         Base64.decode "ZA==" @=? Right "d"
       , testCase "roundtrip for f` ~ ZmA=" $ do
         Base64.decode "ZmC=" @=? Left "non-canonical encoding detected at offset: 2"
         Base64.decode "ZmD=" @=? Left "non-canonical encoding detected at offset: 2"
-        Base64.decodeNonCanonical "ZmC=" @=? Right "f`"
-        Base64.decodeNonCanonical "ZmC=" @=? Right "f`"
         Base64.decode "ZmA=" @=? Right "f`"
 
       , testCase "roundtrip for foo` ~ Zm9vYA==" $ do
         Base64.decode "Zm9vYE==" @=? Left "non-canonical encoding detected at offset: 5"
         Base64.decode "Zm9vYK==" @=? Left "non-canonical encoding detected at offset: 5"
-        Base64.decodeNonCanonical "Zm9vYE==" @=? Right "foo`"
-        Base64.decodeNonCanonical "Zm9vYK==" @=? Right "foo`"
         Base64.decode "Zm9vYA==" @=? Right "foo`"
 
       , testCase "roundtrip for foob` ~ Zm9vYmA=" $ do
         Base64.decode "Zm9vYmC=" @=? Left "non-canonical encoding detected at offset: 6"
         Base64.decode "Zm9vYmD=" @=? Left "non-canonical encoding detected at offset: 6"
-        Base64.decodeNonCanonical "Zm9vYmC=" @=? Right "foob`"
-        Base64.decodeNonCanonical "Zm9vYmD=" @=? Right "foob`"
         Base64.decode "Zm9vYmA=" @=? Right "foob`"
       ]
     , testGroup "Base64URL padding case unit tests"
